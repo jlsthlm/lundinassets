@@ -860,6 +860,40 @@ a:hover { color: var(--primary-dark); }
   text-shadow: 0 1px 2px rgba(0,0,0,.3);
 }
 
+/* Week / Month view — chips */
+.vtl-period-label {
+  justify-content: center;
+}
+.vtl-period-cell {
+  height: auto;
+  min-height: 48px;
+  padding: 5px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vtl-chip {
+  border-radius: 6px;
+  color: white;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.vtl-chip-name {
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,.2);
+}
+.vtl-chip-dates {
+  font-size: .62rem;
+  opacity: .85;
+}
+
 /* =============================================
    Misc
    ============================================= */

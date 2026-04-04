@@ -10,7 +10,15 @@
 <div class="container-fluid py-4">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h2 class="mb-0 fw-bold"><i class="bi bi-bar-chart-steps me-2"></i>Booking Timeline</h2>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <div class="btn-group btn-group-sm">
+                <button class="btn @(Mode == ViewMode.Day   ? "btn-primary" : "btn-outline-secondary")"
+                        @onclick="() => SwitchMode(ViewMode.Day)">Day</button>
+                <button class="btn @(Mode == ViewMode.Week  ? "btn-primary" : "btn-outline-secondary")"
+                        @onclick="() => SwitchMode(ViewMode.Week)">Week</button>
+                <button class="btn @(Mode == ViewMode.Month ? "btn-primary" : "btn-outline-secondary")"
+                        @onclick="() => SwitchMode(ViewMode.Month)">Month</button>
+            </div>
             <button class="btn btn-outline-secondary btn-sm" @onclick="JumpToToday">
                 <i class="bi bi-crosshair me-1"></i>Today
             </button>
@@ -37,7 +45,9 @@
             <!-- Sticky column headers -->
             <div class="vtl-header-row" style="grid-template-columns: @GridColumns;">
                 <div class="vtl-header-date-cell">
-                    <span class="tiny text-muted text-uppercase fw-bold" style="letter-spacing:.05em;">Date</span>
+                    <span class="tiny text-muted text-uppercase fw-bold" style="letter-spacing:.05em;">
+                        @(Mode == ViewMode.Month ? "Month" : Mode == ViewMode.Week ? "Week" : "Date")
+                    </span>
                 </div>
                 @foreach (var asset in AllAssets)
                 {
@@ -58,45 +68,96 @@
             <!-- Scrollable body -->
             <div class="vtl-body">
                 <div class="vtl-rows" style="grid-template-columns: @GridColumns;">
-                    @foreach (var day in Days)
+
+                    @if (Mode == ViewMode.Day)
                     {
-                        bool isToday      = day == Today;
-                        bool isWeekend    = day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-                        bool isMonthStart = day.Day == 1;
-                        // State classes applied directly to each cell (no wrapper div needed)
-                        string state = (isToday ? " vtl-today" : "")
-                                     + (isWeekend ? " vtl-weekend" : "")
-                                     + (isMonthStart ? " vtl-month-start" : "");
-
-                        <!-- Date label (sticky left) -->
-                        <div class="vtl-date-cell@(state)">
-                            @if (isMonthStart || day == Days.First())
-                            {
-                                <span class="vtl-month-tag">@day.ToString("MMM")</span>
-                            }
-                            <span class="vtl-day-num @(isToday ? "text-primary fw-bold" : "")">@day.Day</span>
-                            <span class="vtl-dow text-muted">@day.ToString("ddd")[..2]</span>
-                        </div>
-
-                        <!-- One cell per asset -->
-                        @foreach (var asset in AllAssets)
+                        @foreach (var day in Periods)
                         {
-                            var cell = GetCell(asset.Id, day);
-                            <div class="vtl-asset-cell@(state)">
-                                @if (cell != null)
+                            bool isToday      = day == Today;
+                            bool isWeekend    = day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+                            bool isMonthStart = day.Day == 1;
+                            string state = (isToday ? " vtl-today" : "")
+                                         + (isWeekend ? " vtl-weekend" : "")
+                                         + (isMonthStart ? " vtl-month-start" : "");
+
+                            <div class="vtl-date-cell@(state)">
+                                @if (isMonthStart || day == Periods.First())
                                 {
-                                    <div class="vtl-block vtl-block-@cell.Pos.ToString().ToLower()"
-                                         style="--block-color: @cell.Color;"
-                                         title="@cell.Label">
-                                        @if (cell.Pos is CellPos.Top or CellPos.Single)
-                                        {
-                                            <span class="vtl-block-label">@cell.Label</span>
-                                        }
-                                    </div>
+                                    <span class="vtl-month-tag">@day.ToString("MMM")</span>
                                 }
+                                <span class="vtl-day-num @(isToday ? "text-primary fw-bold" : "")">@day.Day</span>
+                                <span class="vtl-dow text-muted">@day.ToString("ddd")[..2]</span>
                             </div>
+
+                            @foreach (var asset in AllAssets)
+                            {
+                                var cell = GetCell(asset.Id, day);
+                                <div class="vtl-asset-cell@(state)">
+                                    @if (cell != null)
+                                    {
+                                        <div class="vtl-block vtl-block-@cell.Pos.ToString().ToLower()"
+                                             style="--block-color: @cell.Color;"
+                                             title="@cell.Label">
+                                            @if (cell.Pos is CellPos.Top or CellPos.Single)
+                                            {
+                                                <span class="vtl-block-label">@cell.Label</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
                         }
                     }
+                    else
+                    {
+                        @foreach (var period in Periods)
+                        {
+                            bool isCurrent  = IsCurrentPeriod(period);
+                            bool isFirst    = period == Periods.First();
+                            bool isYearStart = period.Month == 1;
+                            string state    = isCurrent ? " vtl-today" : "";
+
+                            <div class="vtl-date-cell vtl-period-label@(state)">
+                                @if (Mode == ViewMode.Week)
+                                {
+                                    <!-- Show month tag when month changes -->
+                                    @if (isFirst || period.Month != period.AddDays(-1).Month)
+                                    {
+                                        <span class="vtl-month-tag">@period.ToString("MMM")</span>
+                                    }
+                                    <span class="vtl-day-num @(isCurrent ? "text-primary fw-bold" : "")">@period.Day</span>
+                                    <span class="vtl-dow text-muted">@period.ToString("ddd")[..2]</span>
+                                }
+                                else <!-- Month mode -->
+                                {
+                                    @if (isFirst || isYearStart)
+                                    {
+                                        <span class="vtl-month-tag">@period.Year</span>
+                                    }
+                                    <span class="vtl-day-num @(isCurrent ? "text-primary fw-bold" : "")">
+                                        @period.ToString("MMM")
+                                    </span>
+                                }
+                            </div>
+
+                            @foreach (var asset in AllAssets)
+                            {
+                                var chips = GetChips(asset.Id, period);
+                                <div class="vtl-asset-cell vtl-period-cell@(state)">
+                                    @foreach (var chip in chips)
+                                    {
+                                        <div class="vtl-chip" style="background-color: @chip.Color;" title="@chip.Label">
+                                            <span class="vtl-chip-name">@chip.Label</span>
+                                            <span class="vtl-chip-dates">
+                                                @chip.Start.ToString("MMM d") – @chip.End.ToString("MMM d")
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    }
+
                 </div>
 
                 @if (IsLoadingMore)
@@ -128,82 +189,87 @@
 </div>
 
 @code {
-    List<Asset> AllAssets = new();
-    List<Booking> AllBookings = new();
-    bool IsLoading = true;
-    bool IsLoadingMore;
-    DateOnly Today = DateOnly.FromDateTime(DateTime.Today);
+    // ── State ──────────────────────────────────────────────────────────────────
+
+    List<Asset>   AllAssets    = new();
+    List<Booking> AllBookings  = new();
+    bool IsLoading     = true;
+    bool IsLoadingMore = false;
+    DateOnly Today     = DateOnly.FromDateTime(DateTime.Today);
     DateOnly ViewStart;
     DateOnly ViewEnd;
     DotNetObjectReference<Timeline>? DotNetRef;
 
-    // How far back/forward to initially show, and how much to add per scroll
-    const int BackDays    = 7;
-    const int ForwardDays = 90;
-    const int MoreDays    = 60;
+    enum ViewMode { Day, Week, Month }
+    ViewMode Mode = ViewMode.Day;
 
-    List<DateOnly> Days => Enumerable
+    // ── Periods ────────────────────────────────────────────────────────────────
+
+    List<DateOnly> Periods => Mode switch
+    {
+        ViewMode.Week  => BuildWeeks(),
+        ViewMode.Month => BuildMonths(),
+        _              => BuildDays(),
+    };
+
+    List<DateOnly> BuildDays() => Enumerable
         .Range(0, ViewEnd.DayNumber - ViewStart.DayNumber + 1)
         .Select(i => ViewStart.AddDays(i))
         .ToList();
 
-    string GridColumns => $"80px {string.Join(" ", AllAssets.Select(_ => "1fr"))}";
+    List<DateOnly> BuildWeeks()
+    {
+        // Align start to the Monday on or before ViewStart
+        var dow   = (int)ViewStart.DayOfWeek;
+        var first = ViewStart.AddDays(-(dow == 0 ? 6 : dow - 1));
+        var weeks = new List<DateOnly>();
+        for (var d = first; d <= ViewEnd; d = d.AddDays(7))
+            weeks.Add(d);
+        return weeks;
+    }
 
-    // (assetId, day) -> cell rendering info
+    List<DateOnly> BuildMonths()
+    {
+        var months = new List<DateOnly>();
+        var d = new DateOnly(ViewStart.Year, ViewStart.Month, 1);
+        while (d <= ViewEnd)
+        {
+            months.Add(d);
+            d = d.AddMonths(1);
+        }
+        return months;
+    }
+
+    DateOnly PeriodEnd(DateOnly p) => Mode switch
+    {
+        ViewMode.Week  => p.AddDays(6),
+        ViewMode.Month => new DateOnly(p.Year, p.Month, DateTime.DaysInMonth(p.Year, p.Month)),
+        _              => p,
+    };
+
+    bool IsCurrentPeriod(DateOnly p) => Mode switch
+    {
+        ViewMode.Week  => Today >= p && Today <= p.AddDays(6),
+        ViewMode.Month => Today.Year == p.Year && Today.Month == p.Month,
+        _              => p == Today,
+    };
+
+    // ── Grid layout ────────────────────────────────────────────────────────────
+
+    string GridColumns => $"90px {string.Join(" ", AllAssets.Select(_ => "1fr"))}";
+
+    // ── Day-view cell map ──────────────────────────────────────────────────────
+
     Dictionary<(int, DateOnly), CellInfo> CellMap = new();
 
     enum CellPos { Single, Top, Mid, Bottom }
     record CellInfo(CellPos Pos, string Color, string Label);
 
-    // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-    protected override async Task OnInitializedAsync()
-    {
-        ViewStart = Today.AddDays(-BackDays);
-        ViewEnd   = Today.AddDays(ForwardDays);
-
-        AllAssets = await AssetService.GetAllAsync();
-        foreach (var a in AllAssets)
-        {
-            var full = await AssetService.GetByIdAsync(a.Id);
-            if (full != null) a.UnavailabilityPeriods = full.UnavailabilityPeriods;
-        }
-
-        await RefreshBookings();
-        IsLoading = false;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            DotNetRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("vtl.setup", DotNetRef);
-            await JS.InvokeVoidAsync("vtl.scrollToToday");
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        try { await JS.InvokeVoidAsync("vtl.dispose"); } catch { }
-        DotNetRef?.Dispose();
-    }
-
-    // ── Data loading ───────────────────────────────────────────────────────────
-
-    async Task RefreshBookings()
-    {
-        AllBookings = await BookingService.GetForRangeAsync(ViewStart, ViewEnd);
-        BuildCellMap();
-    }
-
     void BuildCellMap()
     {
         CellMap.Clear();
-
         foreach (var asset in AllAssets)
         {
-            // Blocked / unavailability periods
             foreach (var u in asset.UnavailabilityPeriods)
             {
                 for (var d = u.StartDate; d <= u.EndDate; d = d.AddDays(1))
@@ -214,7 +280,6 @@
                 }
             }
 
-            // Bookings (EndDate is exclusive — last visible night = EndDate - 1)
             foreach (var b in AllBookings.Where(b => b.AssetId == asset.Id))
             {
                 var lastNight = b.EndDate.AddDays(-1);
@@ -236,17 +301,116 @@
         var last = exclusiveEnd.AddDays(-1);
         return (day == start, day == last) switch
         {
-            (true, true)  => CellPos.Single,
-            (true, false) => CellPos.Top,
-            (false, true) => CellPos.Bottom,
-            _             => CellPos.Mid,
+            (true,  true)  => CellPos.Single,
+            (true,  false) => CellPos.Top,
+            (false, true)  => CellPos.Bottom,
+            _              => CellPos.Mid,
         };
     }
 
     CellInfo? GetCell(int assetId, DateOnly day)
         => CellMap.TryGetValue((assetId, day), out var c) ? c : null;
 
-    // ── Actions ────────────────────────────────────────────────────────────────
+    // ── Week/Month chip map ────────────────────────────────────────────────────
+
+    Dictionary<(int, DateOnly), List<BookingChip>> ChipMap = new();
+    record BookingChip(string Color, string Label, DateOnly Start, DateOnly End);
+
+    void BuildChipMap()
+    {
+        ChipMap.Clear();
+        foreach (var asset in AllAssets)
+        {
+            foreach (var period in Periods)
+            {
+                var pEnd = PeriodEnd(period);
+                var chips = AllBookings
+                    .Where(b => b.AssetId == asset.Id
+                             && b.StartDate <= pEnd
+                             && b.EndDate   >  period)
+                    .Select(b => new BookingChip(
+                        b.Asset.Color,
+                        b.IsFullBooking
+                            ? b.User.FullName
+                            : $"{b.User.FullName} ({b.BedsBooked}b)",
+                        b.StartDate,
+                        b.EndDate.AddDays(-1)))
+                    .ToList();
+
+                // Also include unavailability periods
+                var blocked = asset.UnavailabilityPeriods
+                    .Where(u => u.StartDate <= pEnd && u.EndDate >= period)
+                    .Select(u => new BookingChip("#9ca3af", "Unavailable", u.StartDate, u.EndDate))
+                    .ToList();
+
+                var all = chips.Concat(blocked).OrderBy(c => c.Start).ToList();
+                if (all.Any()) ChipMap[(asset.Id, period)] = all;
+            }
+        }
+    }
+
+    List<BookingChip> GetChips(int assetId, DateOnly period)
+        => ChipMap.TryGetValue((assetId, period), out var c) ? c : new();
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        SetViewRange();
+        AllAssets = await AssetService.GetAllAsync();
+        foreach (var a in AllAssets)
+        {
+            var full = await AssetService.GetByIdAsync(a.Id);
+            if (full != null) a.UnavailabilityPeriods = full.UnavailabilityPeriods;
+        }
+        await RefreshBookings();
+        IsLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            DotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("vtl.setup", DotNetRef);
+            await JS.InvokeVoidAsync("vtl.scrollToToday");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("vtl.dispose"); } catch { }
+        DotNetRef?.Dispose();
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    void SetViewRange()
+    {
+        (int back, int forward) = Mode switch
+        {
+            ViewMode.Week  => (14,  7 * 52),
+            ViewMode.Month => (30,  365 * 2),
+            _              => (7,   90),
+        };
+        ViewStart = Today.AddDays(-back);
+        ViewEnd   = Today.AddDays(forward);
+    }
+
+    async Task RefreshBookings()
+    {
+        AllBookings = await BookingService.GetForRangeAsync(ViewStart, ViewEnd);
+        BuildCellMap();
+        BuildChipMap();
+    }
+
+    async Task SwitchMode(ViewMode mode)
+    {
+        Mode = mode;
+        SetViewRange();
+        await RefreshBookings();
+        await JS.InvokeVoidAsync("vtl.scrollToToday");
+    }
 
     [JSInvokable]
     public async Task LoadMore()
@@ -255,15 +419,19 @@
         IsLoadingMore = true;
         StateHasChanged();
 
-        ViewEnd = ViewEnd.AddDays(MoreDays);
+        int more = Mode switch
+        {
+            ViewMode.Week  => 7 * 13,
+            ViewMode.Month => 180,
+            _              => 60,
+        };
+        ViewEnd = ViewEnd.AddDays(more);
         await RefreshBookings();
 
         IsLoadingMore = false;
         StateHasChanged();
     }
 
-    async Task JumpToToday()
-    {
+    async Task JumpToToday() =>
         await JS.InvokeVoidAsync("vtl.scrollToToday");
-    }
 }

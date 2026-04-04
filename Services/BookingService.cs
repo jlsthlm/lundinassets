@@ -171,6 +171,20 @@ public class BookingService
         return Math.Max(0, minAvailable);
     }
 
+    public async Task UpdateAsync(int bookingId, DateOnly start, DateOnly end,
+        string? notes, bool isFullBooking, int? bedsBooked)
+    {
+        var booking = await _db.Bookings.FindAsync(bookingId);
+        if (booking == null) return;
+        booking.StartDate = start;
+        booking.EndDate = end;
+        booking.Notes = notes;
+        booking.IsFullBooking = isFullBooking;
+        booking.BedsBooked = bedsBooked;
+        booking.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+    }
+
     public async Task<Booking> CreateAsync(Booking booking)
     {
         booking.CreatedAt = DateTime.UtcNow;

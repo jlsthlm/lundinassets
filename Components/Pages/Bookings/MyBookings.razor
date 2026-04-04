@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject BookingService BookingService
 @inject AuthenticationStateProvider AuthStateProvider
+@using System.ComponentModel.DataAnnotations
 
 <PageTitle>My Bookings - Lundin Assets</PageTitle>
 
@@ -35,7 +36,7 @@
                 @foreach (var b in upcoming.OrderBy(b => b.StartDate))
                 {
                     <div class="col-md-6 col-lg-4">
-                        <BookingCard Booking="b" OnCancel="CancelBooking" />
+                        <BookingCard Booking="b" OnCancel="CancelBooking" OnEdit="OpenEdit" />
                     </div>
                 }
             </div>
@@ -84,14 +85,106 @@
     }
 </div>
 
+@if (EditTarget != null)
+{
+    var asset = EditTarget.Asset;
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color:@asset.Color;">
+                    <h5 class="modal-title text-white fw-bold">
+                        <i class="bi bi-pencil me-2"></i>Edit Booking – @asset.Name
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            @onclick="CloseEdit"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(EditError))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle me-2"></i>@EditError
+                        </div>
+                    }
+
+                    <EditForm Model="EditForm" OnValidSubmit="SaveEdit">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Check-in Date</label>
+                            <InputDate @bind-Value="EditForm.Start" class="form-control"
+                                       min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Check-out Date</label>
+                            <InputDate @bind-Value="EditForm.End" class="form-control"
+                                       min="@EditForm.Start.AddDays(1).ToString("yyyy-MM-dd")" />
+                        </div>
+
+                        @if (asset.BedCount.HasValue && asset.BedCount > 1)
+                        {
+                            <div class="mb-3 p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                                <div class="form-check mb-1">
+                                    <InputCheckbox @bind-Value="EditForm.IsFullBooking"
+                                                   class="form-check-input" id="editChkFull" />
+                                    <label class="form-check-label fw-semibold" for="editChkFull">
+                                        Book entire asset exclusively
+                                    </label>
+                                </div>
+                                @if (!EditForm.IsFullBooking)
+                                {
+                                    <div class="mt-2">
+                                        <label class="form-label fw-semibold mb-1">Beds to reserve</label>
+                                        <InputNumber @bind-Value="EditForm.BedsBooked"
+                                                     class="form-control" style="width:90px;"
+                                                     min="1" max="@asset.BedCount" />
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                            <InputTextArea @bind-Value="EditForm.Notes" class="form-control" rows="3"
+                                          placeholder="Any special requests..." />
+                        </div>
+
+                        @if (EditForm.End > EditForm.Start)
+                        {
+                            <div class="alert alert-light border py-2 mb-0">
+                                <i class="bi bi-moon me-1"></i>
+                                <strong>@((EditForm.End - EditForm.Start).Days) nights</strong>:
+                                @EditForm.Start.ToString("MMM d") – @EditForm.End.ToString("MMM d, yyyy")
+                                @if (!EditForm.IsFullBooking && EditForm.BedsBooked > 0)
+                                {
+                                    <span class="ms-2 text-muted">· @EditForm.BedsBooked bed@(EditForm.BedsBooked == 1 ? "" : "s")</span>
+                                }
+                            </div>
+                        }
+
+                        <div class="modal-footer px-0 pb-0 mt-3">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseEdit">Cancel</button>
+                            <button type="submit" class="btn btn-primary fw-semibold" disabled="@IsSaving">
+                                @if (IsSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                Save Changes
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     List<Booking>? UserBookings;
     string? Message;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAsync();
-    }
+    Booking? EditTarget;
+    EditModel EditForm = new();
+    string? EditError;
+    bool IsSaving;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     async Task LoadAsync()
     {
@@ -106,5 +199,73 @@
         await BookingService.CancelAsync(bookingId);
         Message = "Booking cancelled.";
         await LoadAsync();
+    }
+
+    void OpenEdit(Booking booking)
+    {
+        EditTarget = booking;
+        EditError = null;
+        EditForm = new EditModel
+        {
+            Start = booking.StartDate.ToDateTime(TimeOnly.MinValue),
+            End = booking.EndDate.ToDateTime(TimeOnly.MinValue),
+            Notes = booking.Notes,
+            IsFullBooking = booking.IsFullBooking,
+            BedsBooked = booking.BedsBooked ?? 1
+        };
+    }
+
+    void CloseEdit()
+    {
+        EditTarget = null;
+        EditError = null;
+    }
+
+    async Task SaveEdit()
+    {
+        if (EditTarget == null) return;
+        if (EditForm.End <= EditForm.Start)
+        {
+            EditError = "Check-out must be after check-in.";
+            return;
+        }
+
+        IsSaving = true;
+        EditError = null;
+
+        var start = DateOnly.FromDateTime(EditForm.Start);
+        var end = DateOnly.FromDateTime(EditForm.End);
+        var beds = EditForm.IsFullBooking ? 0 : EditForm.BedsBooked;
+
+        var (ok, reason) = await BookingService.CheckAvailabilityAsync(
+            EditTarget.AssetId, start, end,
+            EditForm.IsFullBooking, beds,
+            excludeBookingId: EditTarget.Id);
+
+        if (!ok)
+        {
+            EditError = reason ?? "Dates are not available.";
+            IsSaving = false;
+            return;
+        }
+
+        await BookingService.UpdateAsync(
+            EditTarget.Id, start, end, EditForm.Notes,
+            EditForm.IsFullBooking,
+            EditForm.IsFullBooking ? null : EditForm.BedsBooked);
+
+        IsSaving = false;
+        CloseEdit();
+        Message = "Booking updated.";
+        await LoadAsync();
+    }
+
+    class EditModel
+    {
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public string? Notes { get; set; }
+        public bool IsFullBooking { get; set; } = true;
+        public int BedsBooked { get; set; } = 1;
     }
 }

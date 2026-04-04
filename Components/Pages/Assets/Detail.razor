@@ -1,4 +1,5 @@
 @page "/assets/{Id:int}"
+@attribute [Authorize]
 @inject AssetService AssetService
 @inject BookingService BookingService
 @inject AuthenticationStateProvider AuthStateProvider

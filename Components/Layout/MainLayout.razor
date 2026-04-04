@@ -1,16 +1,75 @@
 @inherits LayoutComponentBase
 
-<NavMenu />
+<div class="app-shell">
 
-<main class="main-content">
-    @Body
-</main>
+    <!-- Sidebar -->
+    <nav class="sidebar @(SidebarOpen ? "open" : "")">
+        <NavMenu OnNavClick="CloseSidebar" />
+    </nav>
 
-<footer class="footer mt-auto py-3">
-    <div class="container text-center">
-        <span class="text-muted small">
-            <i class="bi bi-key-fill text-warning me-1"></i>
-            Lundin Assets &mdash; Family Asset Booking
-        </span>
+    <!-- Overlay (mobile only) -->
+    @if (SidebarOpen)
+    {
+        <div class="sidebar-overlay" @onclick="CloseSidebar"></div>
+    }
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="topbar-toggle" @onclick="ToggleSidebar" aria-label="Menu">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="topbar-title">Lundin Assets</span>
+            <div class="topbar-actions">
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light d-flex align-items-center gap-2"
+                                    data-bs-toggle="dropdown">
+                                @if (!string.IsNullOrEmpty(context.User.FindFirst("ProfilePhoto")?.Value))
+                                {
+                                    <img src="@context.User.FindFirst("ProfilePhoto")!.Value"
+                                         class="avatar" width="26" height="26" />
+                                }
+                                else
+                                {
+                                    <span class="avatar avatar-initials"
+                                          style="width:26px;height:26px;font-size:.65rem;">
+                                        @(context.User.FindFirst("Initials")?.Value ?? "?")
+                                    </span>
+                                }
+                                <span class="d-none d-sm-inline" style="font-size:.82rem;font-weight:600;">
+                                    @context.User.FindFirst("FullName")?.Value
+                                </span>
+                                <i class="bi bi-chevron-down" style="font-size:.7rem;opacity:.5;"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="border-radius:10px;font-size:.85rem;">
+                                <li><a class="dropdown-item py-2" href="/profile">
+                                    <i class="bi bi-person me-2 text-muted"></i>My Profile
+                                </a></li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <form method="post" action="/account/logout-action">
+                                        <button type="submit" class="dropdown-item py-2 text-danger">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Sign Out
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <main class="page-content">
+            @Body
+        </main>
     </div>
-</footer>
+</div>
+
+@code {
+    bool SidebarOpen;
+    void ToggleSidebar() => SidebarOpen = !SidebarOpen;
+    void CloseSidebar() => SidebarOpen = false;
+}

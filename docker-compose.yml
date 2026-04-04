@@ -1,0 +1,44 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: lundinassets-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword_CHANGE_ME
+      MYSQL_DATABASE: lundinassets
+      MYSQL_USER: lundin_user
+      MYSQL_PASSWORD: db_password_CHANGE_ME
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "lundin_user", "--password=db_password_CHANGE_ME"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    build: .
+    container_name: lundinassets-app
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: >-
+        Server=db;Port=3306;Database=lundinassets;
+        User=lundin_user;Password=db_password_CHANGE_ME;
+        AllowPublicKeyRetrieval=true;SslMode=none;
+      AdminUser__Email: admin@lundinassets.se
+      AdminUser__Password: Admin1234!
+    volumes:
+      - uploads:/app/wwwroot/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  uploads:

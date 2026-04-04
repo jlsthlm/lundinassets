@@ -13,9 +13,24 @@ public static class DbInitializer
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var env = services.GetRequiredService<IWebHostEnvironment>();
         var config = services.GetRequiredService<IConfiguration>();
+        var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
 
-        // Create schema
-        await db.Database.EnsureCreatedAsync();
+        // Retry connecting to the database — MySQL container may not be ready immediately
+        var retries = 10;
+        while (true)
+        {
+            try
+            {
+                await db.Database.EnsureCreatedAsync();
+                break;
+            }
+            catch (Exception ex) when (retries-- > 0)
+            {
+                logger.LogWarning("Database not ready, retrying in 3s... ({Retries} attempts left). {Message}",
+                    retries, ex.Message);
+                await Task.Delay(3000);
+            }
+        }
 
         // Ensure upload directories exist
         Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "assets"));

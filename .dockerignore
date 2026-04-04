@@ -1,0 +1,12 @@
+**/.git
+**/bin
+**/obj
+**/publish
+**/.vs
+**/*.user
+**/appsettings.Development.json
+wwwroot/uploads/assets/*
+wwwroot/uploads/profiles/*
+!wwwroot/uploads/assets/.gitkeep
+!wwwroot/uploads/profiles/.gitkeep
+deploy/

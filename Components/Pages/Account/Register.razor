@@ -1,21 +1,20 @@
 @page "/account/register"
-@layout MainLayout
+@layout EmptyLayout
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager Nav
 
 <PageTitle>Register - Lundin Assets</PageTitle>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-person-plus-fill text-primary" style="font-size: 2.5rem;"></i>
-                        <h4 class="mt-2 fw-bold">Create Account</h4>
-                        <p class="text-muted small">Join the family booking system</p>
-                    </div>
+<div class="login-page-wrap">
+  <div style="width:100%;max-width:440px;position:relative;z-index:1;">
+    <div class="text-center mb-4">
+        <div class="login-logo"><i class="bi bi-person-plus-fill"></i></div>
+        <h4 class="text-white fw-bold mb-1" style="letter-spacing:-.02em;">Create Account</h4>
+        <p class="mb-0" style="color:rgba(255,255,255,.45);font-size:.83rem;">Join the family booking system</p>
+    </div>
+    <div class="login-card">
+        <div>
 
                     @if (!string.IsNullOrEmpty(ErrorMessage))
                     {
@@ -82,15 +81,14 @@
                         </button>
                     </EditForm>
 
-                    <hr class="my-4" />
-                    <p class="text-center mb-0">
+                    <div class="divider"></div>
+                    <p class="text-center mb-0" style="font-size:.82rem;color:var(--muted);">
                         Already have an account?
-                        <a href="/account/login" class="text-decoration-none fw-semibold">Sign In</a>
+                        <a href="/account/login" style="font-weight:600;">Sign In</a>
                     </p>
-                </div>
-            </div>
         </div>
     </div>
+  </div>
 </div>
 
 @code {

@@ -32,6 +32,20 @@ public static class DbInitializer
             }
         }
 
+        // Schema migrations — add new columns to existing tables if they don't exist
+        // (EnsureCreated only creates missing tables; it won't add new columns to existing ones)
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE `Bookings` ADD COLUMN IF NOT EXISTS `IsFullBooking` tinyint(1) NOT NULL DEFAULT 1");
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE `Bookings` ADD COLUMN IF NOT EXISTS `BedsBooked` int NULL");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Schema migration skipped or failed: {Message}", ex.Message);
+        }
+
         // Ensure upload directories exist
         Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "assets"));
         Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "profiles"));

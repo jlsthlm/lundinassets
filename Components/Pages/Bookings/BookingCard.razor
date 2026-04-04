@@ -21,6 +21,18 @@
                 @Booking.StartDate.ToString("MMM d") – @Booking.EndDate.ToString("MMM d, yyyy")
             </span>
             <span class="badge bg-light text-dark border small">@Booking.NightCount nights</span>
+            @if (Booking.IsFullBooking)
+            {
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">
+                    <i class="bi bi-lock me-1"></i>Exclusive
+                </span>
+            }
+            else if (Booking.BedsBooked.HasValue)
+            {
+                <span class="badge bg-info-subtle text-info border border-info-subtle small">
+                    <i class="bi bi-moon me-1"></i>@Booking.BedsBooked bed@(Booking.BedsBooked == 1 ? "" : "s")
+                </span>
+            }
         </div>
 
         @if (!string.IsNullOrEmpty(Booking.Notes))

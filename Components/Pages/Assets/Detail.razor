@@ -140,7 +140,21 @@ else
                                 @foreach (var b in AssetBookings.Take(5))
                                 {
                                     <div class="booking-chip" style="border-left-color: @asset.Color;">
-                                        <div class="fw-semibold">@b.User.FullName</div>
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="fw-semibold">@b.User.FullName</div>
+                                            @if (b.IsFullBooking)
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2" style="font-size:.7rem;">
+                                                    <i class="bi bi-lock me-1"></i>Exclusive
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle ms-2" style="font-size:.7rem;">
+                                                    <i class="bi bi-moon me-1"></i>@b.BedsBooked bed@(b.BedsBooked == 1 ? "" : "s")
+                                                </span>
+                                            }
+                                        </div>
                                         <div class="text-muted small">
                                             @b.StartDate.ToString("MMM d") – @b.EndDate.ToString("MMM d, yyyy")
                                             <span class="ms-1">(@b.NightCount nights)</span>
@@ -204,13 +218,61 @@ else
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Check-in Date</label>
                                     <InputDate @bind-Value="BookingForm.Start" class="form-control"
-                                               min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                               min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                               @oninput="OnDatesChanged" />
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Check-out Date</label>
                                     <InputDate @bind-Value="BookingForm.End" class="form-control"
-                                               min="@BookingForm.Start.AddDays(1).ToString("yyyy-MM-dd")" />
+                                               min="@BookingForm.Start.AddDays(1).ToString("yyyy-MM-dd")"
+                                               @oninput="OnDatesChanged" />
                                 </div>
+
+                                @if (asset.BedCount.HasValue && asset.BedCount > 1)
+                                {
+                                    <div class="mb-3 p-3 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                        <div class="form-check mb-2">
+                                            <InputCheckbox @bind-Value="BookingForm.IsFullBooking"
+                                                           class="form-check-input"
+                                                           id="chkFullBooking"
+                                                           @oninput="OnBookingTypeChanged" />
+                                            <label class="form-check-label fw-semibold" for="chkFullBooking">
+                                                Book entire asset exclusively
+                                            </label>
+                                        </div>
+                                        <div class="text-muted small ms-4 mb-1">
+                                            @if (BookingForm.IsFullBooking)
+                                            {
+                                                <span><i class="bi bi-lock me-1"></i>No one else can book during your stay.</span>
+                                            }
+                                            else
+                                            {
+                                                <span><i class="bi bi-people me-1"></i>Other family members can book remaining beds at the same time.</span>
+                                            }
+                                        </div>
+
+                                        @if (!BookingForm.IsFullBooking)
+                                        {
+                                            <div class="mt-2">
+                                                <label class="form-label fw-semibold mb-1">Beds to reserve</label>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <InputNumber @bind-Value="BookingForm.BedsBooked"
+                                                                 class="form-control" style="width:90px;"
+                                                                 min="1" max="@asset.BedCount"
+                                                                 @oninput="OnDatesChanged" />
+                                                    @if (AvailableBeds.HasValue)
+                                                    {
+                                                        <span class="text-muted small">
+                                                            <i class="bi bi-moon me-1"></i>
+                                                            @AvailableBeds of @asset.BedCount beds free
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
                                 <div class="mb-4">
                                     <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
                                     <InputTextArea @bind-Value="BookingForm.Notes" class="form-control" rows="3"
@@ -223,6 +285,10 @@ else
                                         <i class="bi bi-moon me-1"></i>
                                         <strong>@((BookingForm.End - BookingForm.Start).Days) nights</strong>:
                                         @BookingForm.Start.ToString("MMM d") – @BookingForm.End.ToString("MMM d, yyyy")
+                                        @if (!BookingForm.IsFullBooking && BookingForm.BedsBooked > 0)
+                                        {
+                                            <span class="ms-2 text-muted">· @BookingForm.BedsBooked bed@(BookingForm.BedsBooked == 1 ? "" : "s")</span>
+                                        }
                                     </div>
                                 }
 
@@ -248,6 +314,7 @@ else
     int CurrentPhotoIdx;
     string? BookingError;
     string? UserId;
+    int? AvailableBeds;
     BookingInputModel BookingForm = new();
 
     protected override async Task OnInitializedAsync()
@@ -273,6 +340,31 @@ else
         CurrentPhotoIdx = (CurrentPhotoIdx + 1) % CurrentAsset!.Photos.Count;
     }
 
+    async Task OnDatesChanged()
+    {
+        await RefreshAvailableBeds();
+    }
+
+    async Task OnBookingTypeChanged()
+    {
+        // IsFullBooking toggle has just fired — value hasn't flipped yet in the model,
+        // so schedule a refresh on the next render cycle.
+        await Task.Yield();
+        await RefreshAvailableBeds();
+    }
+
+    async Task RefreshAvailableBeds()
+    {
+        var asset = CurrentAsset;
+        if (asset?.BedCount == null || BookingForm.IsFullBooking
+            || BookingForm.End <= BookingForm.Start) return;
+
+        var start = DateOnly.FromDateTime(BookingForm.Start);
+        var end = DateOnly.FromDateTime(BookingForm.End);
+        AvailableBeds = await BookingService.GetAvailableBedsAsync(Id, start, end);
+        StateHasChanged();
+    }
+
     async Task HandleBook()
     {
         if (BookingForm.End <= BookingForm.Start)
@@ -281,13 +373,21 @@ else
             return;
         }
 
+        if (!BookingForm.IsFullBooking && BookingForm.BedsBooked < 1)
+        {
+            BookingError = "Please specify at least 1 bed.";
+            return;
+        }
+
         IsBooking = true;
         BookingError = null;
 
         var start = DateOnly.FromDateTime(BookingForm.Start);
         var end = DateOnly.FromDateTime(BookingForm.End);
+        var beds = BookingForm.IsFullBooking ? 0 : BookingForm.BedsBooked;
 
-        var (available, reason) = await BookingService.CheckAvailabilityAsync(Id, start, end);
+        var (available, reason) = await BookingService.CheckAvailabilityAsync(
+            Id, start, end, BookingForm.IsFullBooking, beds);
         if (!available)
         {
             BookingError = reason ?? "Not available for selected dates.";
@@ -302,6 +402,8 @@ else
             StartDate = start,
             EndDate = end,
             Notes = BookingForm.Notes,
+            IsFullBooking = BookingForm.IsFullBooking,
+            BedsBooked = BookingForm.IsFullBooking ? null : beds,
             Status = BookingStatus.Confirmed
         });
 
@@ -318,6 +420,7 @@ else
         BookingSuccess = false;
         BookingForm = new BookingInputModel();
         BookingError = null;
+        AvailableBeds = null;
     }
 
     class BookingInputModel
@@ -325,5 +428,7 @@ else
         public DateTime Start { get; set; } = DateTime.Today;
         public DateTime End { get; set; } = DateTime.Today.AddDays(7);
         public string? Notes { get; set; }
+        public bool IsFullBooking { get; set; } = true;
+        public int BedsBooked { get; set; } = 1;
     }
 }

@@ -28,6 +28,15 @@ public class Booking
 
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// True = exclusive booking of the entire asset.
+    /// False = partial booking (only some beds); concurrent partial bookings are allowed.
+    /// </summary>
+    public bool IsFullBooking { get; set; } = true;
+
+    /// <summary>Number of beds reserved for a partial booking. Null for full bookings.</summary>
+    public int? BedsBooked { get; set; }
+
     public BookingStatus Status { get; set; } = BookingStatus.Confirmed;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

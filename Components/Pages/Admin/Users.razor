@@ -8,7 +8,7 @@
 <div class="container py-4">
     <h2 class="mb-4 fw-bold"><i class="bi bi-people me-2"></i>Manage Users</h2>
 
-    @if (Users == null)
+    @if (UserList == null)
     {
         <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
     }
@@ -27,7 +27,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var u in Users)
+                        @foreach (var u in UserList)
                         {
                             <tr>
                                 <td>
@@ -105,7 +105,7 @@
 
 @code {
     record UserRow(ApplicationUser User, bool IsAdmin);
-    List<UserRow>? Users;
+    List<UserRow>? UserList;
     string? Message;
 
     protected override async Task OnInitializedAsync()
@@ -122,7 +122,7 @@
             var roles = await UserManager.GetRolesAsync(u);
             rows.Add(new UserRow(u, roles.Contains("Admin")));
         }
-        Users = rows.OrderBy(r => r.User.FirstName).ToList();
+        UserList = rows.OrderBy(r => r.User.FirstName).ToList();
     }
 
     async Task MakeAdmin(string userId)

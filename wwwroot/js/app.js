@@ -17,7 +17,6 @@ window.setupToastAutoDismiss = () => {
     });
 };
 
-// Scroll to top after navigation
-window.scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+// Submit a form by id — used by Register to auto-login after account creation
+window.submitForm = (id) => document.getElementById(id)?.submit();
+

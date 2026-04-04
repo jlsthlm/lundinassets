@@ -1,8 +1,8 @@
 @page "/account/register"
 @layout EmptyLayout
 @inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Register - Lundin Assets</PageTitle>
 
@@ -91,10 +91,23 @@
   </div>
 </div>
 
+@* Hidden form submitted via JS after account creation to set the auth cookie
+   via a real HTTP response (same mechanism as the login page). *@
+@if (AutoLoginEmail != null)
+{
+    <form id="post-register-login" method="post" action="/account/login-action" style="display:none">
+        <input type="hidden" name="Email"     value="@AutoLoginEmail" />
+        <input type="hidden" name="Password"  value="@AutoLoginPassword" />
+        <input type="hidden" name="ReturnUrl" value="/" />
+    </form>
+}
+
 @code {
     RegisterModel Model = new();
     string? ErrorMessage;
     bool IsLoading;
+    string? AutoLoginEmail;
+    string? AutoLoginPassword;
 
     async Task HandleRegister()
     {
@@ -127,8 +140,14 @@
         }
 
         await UserManager.AddToRoleAsync(user, "User");
-        await SignInManager.SignInAsync(user, isPersistent: false);
-        Nav.NavigateTo("/", forceLoad: true);
+
+        // Sign in via a real HTTP form POST so the auth cookie is set on a proper
+        // HTTP response — calling SignInManager directly from Blazor Server doesn't
+        // deliver the cookie to the browser before NavigateTo fires.
+        AutoLoginEmail    = Model.Email;
+        AutoLoginPassword = Model.Password;
+        StateHasChanged();
+        await JS.InvokeVoidAsync("submitForm", "post-register-login");
     }
 
     class RegisterModel

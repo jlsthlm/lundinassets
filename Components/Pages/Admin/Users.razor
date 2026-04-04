@@ -1,0 +1,149 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Manage Users - Lundin Assets</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold"><i class="bi bi-people me-2"></i>Manage Users</h2>
+
+    @if (Users == null)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>User</th>
+                            <th class="d-none d-md-table-cell">Email</th>
+                            <th>Role</th>
+                            <th class="d-none d-lg-table-cell">Joined</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Users)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (!string.IsNullOrEmpty(u.User.ProfilePhotoPath))
+                                        {
+                                            <img src="@u.User.ProfilePhotoPath"
+                                                 class="rounded-circle" width="36" height="36"
+                                                 style="object-fit:cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="avatar-initials rounded-circle d-flex align-items-center justify-content-center"
+                                                 style="width:36px;height:36px;font-size:.8rem;">
+                                                @u.User.Initials
+                                            </div>
+                                        }
+                                        <div>
+                                            <div class="fw-semibold small">@u.User.FullName</div>
+                                            <div class="text-muted tiny d-md-none">@u.User.Email</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="d-none d-md-table-cell small text-muted">@u.User.Email</td>
+                                <td>
+                                    @if (u.IsAdmin)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Admin</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary border">User</span>
+                                    }
+                                </td>
+                                <td class="d-none d-lg-table-cell text-muted small">
+                                    @u.User.CreatedAt.ToString("MMM d, yyyy")
+                                </td>
+                                <td class="text-end">
+                                    @if (!u.IsAdmin)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => MakeAdmin(u.User.Id)">
+                                            <i class="bi bi-shield-plus me-1"></i>Make Admin
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="() => RemoveAdmin(u.User.Id)">
+                                            <i class="bi bi-shield-minus me-1"></i>Remove Admin
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show align-items-center text-bg-success border-0">
+                <div class="d-flex">
+                    <div class="toast-body">@Message</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                            @onclick="() => Message = null"></button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    record UserRow(ApplicationUser User, bool IsAdmin);
+    List<UserRow>? Users;
+    string? Message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    async Task LoadUsers()
+    {
+        var allUsers = UserManager.Users.ToList();
+        var rows = new List<UserRow>();
+        foreach (var u in allUsers)
+        {
+            var roles = await UserManager.GetRolesAsync(u);
+            rows.Add(new UserRow(u, roles.Contains("Admin")));
+        }
+        Users = rows.OrderBy(r => r.User.FirstName).ToList();
+    }
+
+    async Task MakeAdmin(string userId)
+    {
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user != null)
+        {
+            await UserManager.AddToRoleAsync(user, "Admin");
+            Message = $"{user.FullName} is now an admin.";
+            await LoadUsers();
+        }
+    }
+
+    async Task RemoveAdmin(string userId)
+    {
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user != null)
+        {
+            await UserManager.RemoveFromRoleAsync(user, "Admin");
+            Message = $"{user.FullName} is no longer an admin.";
+            await LoadUsers();
+        }
+    }
+}

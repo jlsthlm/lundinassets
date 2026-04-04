@@ -1,0 +1,216 @@
+@page "/calendar"
+@inject BookingService BookingService
+@inject AssetService AssetService
+
+<PageTitle>Calendar - Lundin Assets</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <h2 class="mb-0 fw-bold"><i class="bi bi-calendar3 me-2"></i>Booking Calendar</h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <select class="form-select form-select-sm" style="width:auto;"
+                    @bind="FilterAssetId" @bind:after="LoadBookings">
+                <option value="">All Assets</option>
+                @foreach (var a in AllAssets)
+                {
+                    <option value="@a.Id">@a.Name</option>
+                }
+            </select>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" @onclick="PrevMonth">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="btn btn-outline-secondary px-3" @onclick="GoToday">Today</button>
+                <button class="btn btn-outline-secondary" @onclick="NextMonth">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+            <span class="fw-semibold" style="min-width: 150px; text-align: center;">
+                @CurrentDate.ToString("MMMM yyyy")
+            </span>
+            <a href="/timeline" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-bar-chart-steps me-1"></i>Timeline
+            </a>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else
+    {
+        <div class="calendar-grid">
+            @foreach (var day in DayNames)
+            {
+                <div class="calendar-day-header">@day</div>
+            }
+            @foreach (var cell in CalendarCells)
+            {
+                var cellDate = cell;
+                var isCurrentMonth = cell.Month == CurrentDate.Month;
+                var isToday = cell == Today;
+                var cellBookings = GetBookingsForDate(cell);
+
+                <div class="calendar-cell @(!isCurrentMonth ? "other-month" : "") @(isToday ? "today" : "")"
+                     @onclick="() => SelectDate(cell)">
+                    <div class="calendar-cell-header">
+                        <span class="@(isToday ? "today-badge" : "")">@cell.Day</span>
+                    </div>
+                    <div class="calendar-cell-events">
+                        @foreach (var b in cellBookings.Take(3))
+                        {
+                            bool isStart = b.StartDate == cell;
+                            bool isEnd = b.EndDate == cell;
+                            <div class="cal-event @(isStart ? "event-start" : "") @(isEnd ? "event-end" : "")"
+                                 style="background-color: @b.Asset.Color;"
+                                 title="@b.Asset.Name: @b.User.FullName">
+                                @if (isStart || cell.DayOfWeek == DayOfWeek.Monday || cell.Day == 1)
+                                {
+                                    <span class="cal-event-label">@b.Asset.Name</span>
+                                }
+                            </div>
+                        }
+                        @if (cellBookings.Count > 3)
+                        {
+                            <div class="cal-more">+@(cellBookings.Count - 3) more</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Day Detail Modal -->
+    @if (SelectedDate.HasValue)
+    {
+        var dayBookings = GetBookingsForDate(SelectedDate.Value);
+        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.4);"
+             @onclick="() => SelectedDate = null">
+            <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-calendar3 me-2"></i>
+                            @SelectedDate.Value.ToString("dddd, MMMM d, yyyy")
+                        </h5>
+                        <button type="button" class="btn-close" @onclick="() => SelectedDate = null"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (!dayBookings.Any())
+                        {
+                            <p class="text-muted text-center py-3">No bookings on this day.</p>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-3">
+                                @foreach (var b in dayBookings)
+                                {
+                                    <div class="booking-chip" style="border-left-color: @b.Asset.Color;">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="fw-semibold">@b.Asset.Name</span>
+                                            <span class="badge" style="background-color: @b.Asset.Color;">
+                                                @b.Asset.TypeLabel
+                                            </span>
+                                        </div>
+                                        <div class="text-muted small mt-1">
+                                            <i class="bi bi-person me-1"></i>@b.User.FullName
+                                        </div>
+                                        <div class="text-muted small">
+                                            <i class="bi bi-calendar me-1"></i>
+                                            @b.StartDate.ToString("MMM d") – @b.EndDate.ToString("MMM d, yyyy")
+                                            (@b.NightCount nights)
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(b.Notes))
+                                        {
+                                            <div class="text-muted small fst-italic mt-1">"@b.Notes"</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <a href="/assets" class="btn btn-primary btn-sm">Book an Asset</a>
+                        <button class="btn btn-secondary btn-sm" @onclick="() => SelectedDate = null">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Legend -->
+    @if (AllAssets.Any())
+    {
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            @foreach (var a in AllAssets.Where(a => MonthBookings.Any(b => b.AssetId == a.Id)))
+            {
+                <span class="badge rounded-pill px-3 py-2" style="background-color: @a.Color;">
+                    <i class="bi @a.TypeIcon me-1"></i>@a.Name
+                </span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    List<Asset> AllAssets = new();
+    List<Booking> MonthBookings = new();
+    DateOnly CurrentDate = DateOnly.FromDateTime(DateTime.Today);
+    DateOnly Today = DateOnly.FromDateTime(DateTime.Today);
+    DateOnly? SelectedDate;
+    int? FilterAssetId;
+    bool IsLoading = true;
+
+    static readonly string[] DayNames = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    IEnumerable<DateOnly> CalendarCells
+    {
+        get
+        {
+            var firstDay = new DateOnly(CurrentDate.Year, CurrentDate.Month, 1);
+            // Start on Monday
+            int offset = ((int)firstDay.DayOfWeek + 6) % 7;
+            var start = firstDay.AddDays(-offset);
+            return Enumerable.Range(0, 42).Select(i => start.AddDays(i));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AllAssets = await AssetService.GetAllAsync();
+        await LoadBookings();
+    }
+
+    async Task LoadBookings()
+    {
+        IsLoading = true;
+        var cells = CalendarCells.ToList();
+        MonthBookings = await BookingService.GetForRangeAsync(
+            cells.First(), cells.Last(), FilterAssetId);
+        IsLoading = false;
+    }
+
+    List<Booking> GetBookingsForDate(DateOnly date)
+        => MonthBookings.Where(b => b.StartDate <= date && b.EndDate >= date).ToList();
+
+    void SelectDate(DateOnly date) => SelectedDate = date;
+
+    async Task PrevMonth()
+    {
+        CurrentDate = CurrentDate.AddMonths(-1);
+        await LoadBookings();
+    }
+
+    async Task NextMonth()
+    {
+        CurrentDate = CurrentDate.AddMonths(1);
+        await LoadBookings();
+    }
+
+    async Task GoToday()
+    {
+        CurrentDate = Today;
+        await LoadBookings();
+    }
+}

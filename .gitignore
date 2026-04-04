@@ -1,0 +1,21 @@
+## .NET / ASP.NET
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+.vs/
+publish/
+
+## App specific
+wwwroot/uploads/assets/*
+wwwroot/uploads/profiles/*
+!wwwroot/uploads/assets/.gitkeep
+!wwwroot/uploads/profiles/.gitkeep
+
+## Secrets
+appsettings.Production.json
+
+## OS
+.DS_Store
+Thumbs.db

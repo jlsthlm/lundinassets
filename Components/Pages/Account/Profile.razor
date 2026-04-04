@@ -1,0 +1,194 @@
+@page "/profile"
+@attribute [Authorize]
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject FileUploadService FileUpload
+
+<PageTitle>My Profile - Lundin Assets</PageTitle>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <h2 class="mb-4"><i class="bi bi-person-circle me-2"></i>My Profile</h2>
+
+            @if (CurrentUser == null)
+            {
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center gap-4 mb-4">
+                            <div class="profile-photo-wrapper">
+                                @if (!string.IsNullOrEmpty(CurrentUser.ProfilePhotoPath))
+                                {
+                                    <img src="@CurrentUser.ProfilePhotoPath" class="profile-photo-lg" />
+                                }
+                                else
+                                {
+                                    <div class="profile-photo-lg avatar-initials-lg">
+                                        @CurrentUser.Initials
+                                    </div>
+                                }
+                            </div>
+                            <div>
+                                <h4 class="mb-1">@CurrentUser.FullName</h4>
+                                <p class="text-muted mb-0">@CurrentUser.Email</p>
+                                <small class="text-muted">Member since @CurrentUser.CreatedAt.ToString("MMMM yyyy")</small>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(PhotoError))
+                        {
+                            <div class="alert alert-danger py-2">@PhotoError</div>
+                        }
+                        @if (!string.IsNullOrEmpty(PhotoSuccess))
+                        {
+                            <div class="alert alert-success py-2">@PhotoSuccess</div>
+                        }
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Profile Photo</label>
+                            <InputFile OnChange="HandlePhotoUpload" accept="image/*" class="form-control" />
+                            <small class="text-muted">JPG, PNG or WebP, max 10MB</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h5 class="mb-3">Edit Details</h5>
+
+                        @if (!string.IsNullOrEmpty(SaveSuccess))
+                        {
+                            <div class="alert alert-success py-2">@SaveSuccess</div>
+                        }
+                        @if (!string.IsNullOrEmpty(SaveError))
+                        {
+                            <div class="alert alert-danger py-2">@SaveError</div>
+                        }
+
+                        <EditForm Model="Form" OnValidSubmit="HandleSave">
+                            <DataAnnotationsValidator />
+
+                            <div class="row">
+                                <div class="col-sm-6 mb-3">
+                                    <label class="form-label fw-semibold">First Name</label>
+                                    <InputText @bind-Value="Form.FirstName" class="form-control" />
+                                    <ValidationMessage For="() => Form.FirstName" class="text-danger small" />
+                                </div>
+                                <div class="col-sm-6 mb-3">
+                                    <label class="form-label fw-semibold">Last Name</label>
+                                    <InputText @bind-Value="Form.LastName" class="form-control" />
+                                    <ValidationMessage For="() => Form.LastName" class="text-danger small" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Bio</label>
+                                <InputTextArea @bind-Value="Form.Bio" class="form-control" rows="3"
+                                               placeholder="A short bio about yourself..." />
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">New Password <span class="text-muted fw-normal">(leave blank to keep current)</span></label>
+                                <InputText @bind-Value="Form.NewPassword" type="password" class="form-control"
+                                           placeholder="Min. 8 characters" />
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" disabled="@IsSaving">
+                                @if (IsSaving) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                                <i class="bi bi-check-lg me-1"></i> Save Changes
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    ApplicationUser? CurrentUser;
+    ProfileForm Form = new();
+    string? PhotoError, PhotoSuccess, SaveError, SaveSuccess;
+    bool IsSaving, IsUploadingPhoto;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        CurrentUser = await UserManager.GetUserAsync(state.User);
+        if (CurrentUser != null)
+        {
+            Form.FirstName = CurrentUser.FirstName;
+            Form.LastName = CurrentUser.LastName;
+            Form.Bio = CurrentUser.Bio;
+        }
+    }
+
+    async Task HandlePhotoUpload(InputFileChangeEventArgs e)
+    {
+        PhotoError = null; PhotoSuccess = null;
+        IsUploadingPhoto = true;
+        try
+        {
+            var path = await FileUpload.SaveAsync(e.File, "profiles");
+            if (path == null) { PhotoError = "Invalid file type. Use JPG, PNG or WebP."; return; }
+
+            if (CurrentUser != null)
+            {
+                FileUpload.Delete(CurrentUser.ProfilePhotoPath);
+                CurrentUser.ProfilePhotoPath = path;
+                await UserManager.UpdateAsync(CurrentUser);
+                PhotoSuccess = "Profile photo updated.";
+            }
+        }
+        catch (Exception ex)
+        {
+            PhotoError = $"Upload failed: {ex.Message}";
+        }
+        finally { IsUploadingPhoto = false; }
+    }
+
+    async Task HandleSave()
+    {
+        IsSaving = true; SaveError = null; SaveSuccess = null;
+        try
+        {
+            if (CurrentUser == null) return;
+            CurrentUser.FirstName = Form.FirstName;
+            CurrentUser.LastName = Form.LastName;
+            CurrentUser.Bio = Form.Bio;
+
+            if (!string.IsNullOrEmpty(Form.NewPassword))
+            {
+                var token = await UserManager.GeneratePasswordResetTokenAsync(CurrentUser);
+                var r = await UserManager.ResetPasswordAsync(CurrentUser, token, Form.NewPassword);
+                if (!r.Succeeded) { SaveError = string.Join(" ", r.Errors.Select(e => e.Description)); return; }
+            }
+
+            await UserManager.UpdateAsync(CurrentUser);
+            SaveSuccess = "Profile saved successfully.";
+        }
+        finally { IsSaving = false; }
+    }
+
+    class ProfileForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string FirstName { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string LastName { get; set; } = "";
+
+        public string? Bio { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MinLength(8)]
+        public string? NewPassword { get; set; }
+    }
+}

@@ -1,0 +1,139 @@
+@page "/"
+@inject AssetService Assets
+@inject BookingService Bookings
+
+<PageTitle>Lundin Assets - Family Booking</PageTitle>
+
+<div class="hero-banner">
+    <div class="container py-5 text-center">
+        <i class="bi bi-key-fill text-warning hero-icon"></i>
+        <h1 class="display-5 fw-bold text-white mt-3">Lundin Family Assets</h1>
+        <p class="lead text-white-50">Book and manage our shared properties, cars and more.</p>
+        <div class="d-flex gap-3 justify-content-center mt-4 flex-wrap">
+            <a href="/assets" class="btn btn-warning btn-lg fw-semibold">
+                <i class="bi bi-grid me-2"></i> View Assets
+            </a>
+            <a href="/calendar" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-calendar3 me-2"></i> Calendar
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    @if (AllAssets == null)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3 mb-5">
+            <div class="col-sm-4">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary-subtle text-primary">
+                        <i class="bi bi-buildings"></i>
+                    </div>
+                    <div>
+                        <div class="stat-number">@AllAssets.Count</div>
+                        <div class="stat-label">Assets</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="stat-card">
+                    <div class="stat-icon bg-success-subtle text-success">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="stat-number">@AllAssets.Count(a => a.IsAvailable)</div>
+                        <div class="stat-label">Available</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="stat-card">
+                    <div class="stat-icon bg-info-subtle text-info">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div class="stat-number">@UpcomingCount</div>
+                        <div class="stat-label">Upcoming Bookings</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="mb-4 fw-bold">Our Assets</h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+            @foreach (var asset in AllAssets)
+            {
+                <div class="col">
+                    <a href="/assets/@asset.Id" class="text-decoration-none">
+                        <div class="card asset-card h-100">
+                            <div class="asset-card-photo">
+                                @if (asset.PrimaryPhoto != null)
+                                {
+                                    <img src="@asset.PrimaryPhoto.FilePath" class="asset-card-img" alt="@asset.Name" />
+                                }
+                                else
+                                {
+                                    <div class="asset-card-placeholder" style="color: @asset.Color; background-color: @(asset.Color + "22");">
+                                        <i class="bi @asset.TypeIcon"></i>
+                                    </div>
+                                }
+                                <span class="asset-type-badge" style="background-color: @asset.Color;">
+                                    <i class="bi @asset.TypeIcon me-1"></i>@asset.TypeLabel
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title mb-1">@asset.Name</h5>
+                                @if (!string.IsNullOrEmpty(asset.Location))
+                                {
+                                    <p class="text-muted small mb-2">
+                                        <i class="bi bi-geo-alt me-1"></i>@asset.Location
+                                    </p>
+                                }
+                                @if (asset.BedCount.HasValue)
+                                {
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi bi-moon me-1"></i>@asset.BedCount beds
+                                    </span>
+                                }
+                            </div>
+                            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                                @if (asset.IsAvailable)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        <i class="bi bi-check-circle me-1"></i>Available
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                        <i class="bi bi-x-circle me-1"></i>Unavailable
+                                    </span>
+                                }
+                                <span class="small text-muted">View details <i class="bi bi-arrow-right"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    List<Asset>? AllAssets;
+    int UpcomingCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AllAssets = await Assets.GetAllAsync();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var upcoming = await Bookings.GetForRangeAsync(today, today.AddDays(90));
+        UpcomingCount = upcoming.Count;
+    }
+}

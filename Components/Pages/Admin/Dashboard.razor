@@ -1,0 +1,164 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@inject AssetService AssetService
+@inject BookingService BookingService
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Admin Dashboard - Lundin Assets</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold"><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</h2>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else
+    {
+        <div class="row g-3 mb-5">
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-buildings"></i></div>
+                    <div><div class="stat-number">@TotalAssets</div><div class="stat-label">Total Assets</div></div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-calendar-check"></i></div>
+                    <div><div class="stat-number">@UpcomingBookings</div><div class="stat-label">Upcoming Bookings</div></div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-info-subtle text-info"><i class="bi bi-people"></i></div>
+                    <div><div class="stat-number">@TotalUsers</div><div class="stat-label">Users</div></div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-calendar-month"></i></div>
+                    <div><div class="stat-number">@ThisMonthBookings</div><div class="stat-label">This Month</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent fw-semibold">
+                        <i class="bi bi-calendar-check me-2 text-primary"></i>Upcoming Bookings
+                    </div>
+                    <div class="card-body p-0">
+                        @if (!RecentBookings.Any())
+                        {
+                            <p class="text-muted text-center py-4">No upcoming bookings.</p>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var b in RecentBookings.Take(8))
+                                {
+                                    <div class="list-group-item px-3 py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <div class="fw-semibold small">@b.Asset.Name</div>
+                                                <div class="text-muted small">
+                                                    <i class="bi bi-person me-1"></i>@b.User.FullName
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="small fw-semibold">@b.StartDate.ToString("MMM d")</div>
+                                                <div class="tiny text-muted">– @b.EndDate.ToString("MMM d")</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="/admin/bookings" class="btn btn-sm btn-outline-primary">
+                            Manage Bookings <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent fw-semibold">
+                        <i class="bi bi-buildings me-2 text-primary"></i>Assets
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @foreach (var a in Assets)
+                            {
+                                <div class="list-group-item px-3 py-2">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="color-dot" style="background-color: @a.Color;"></span>
+                                            <div>
+                                                <div class="fw-semibold small">@a.Name</div>
+                                                <div class="tiny text-muted">@a.TypeLabel @(a.BedCount.HasValue ? $"· {a.BedCount} beds" : "")</div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            @if (a.IsAvailable)
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">Available</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Unavailable</span>
+                                            }
+                                            <a href="/admin/assets/edit/@a.Id" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent d-flex gap-2">
+                        <a href="/admin/assets" class="btn btn-sm btn-outline-primary">
+                            Manage Assets <i class="bi bi-arrow-right"></i>
+                        </a>
+                        <a href="/admin/assets/edit" class="btn btn-sm btn-success">
+                            <i class="bi bi-plus me-1"></i>New Asset
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    int TotalAssets, UpcomingBookings, TotalUsers, ThisMonthBookings;
+    List<Asset> Assets = new();
+    List<Booking> RecentBookings = new();
+    bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Assets = await AssetService.GetAllAsync();
+        TotalAssets = Assets.Count;
+
+        var users = await UserManager.Users.ToListAsync();
+        TotalUsers = users.Count;
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        RecentBookings = await BookingService.GetForRangeAsync(today, today.AddDays(180));
+        UpcomingBookings = RecentBookings.Count;
+
+        var monthBookings = await BookingService.GetForRangeAsync(monthStart, monthEnd);
+        ThisMonthBookings = monthBookings.Count;
+
+        IsLoading = false;
+    }
+}

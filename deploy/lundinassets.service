@@ -1,0 +1,23 @@
+[Unit]
+Description=LundinAssets Blazor Server Application
+After=network.target mysql.service
+
+[Service]
+WorkingDirectory=/var/www/lundinassets
+ExecStart=/usr/bin/dotnet /var/www/lundinassets/LundinAssets.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+User=www-data
+Group=www-data
+
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://localhost:5000
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# Override connection string and admin password via env vars (optional):
+# Environment=ConnectionStrings__DefaultConnection=Server=localhost;...
+# Environment=AdminUser__Password=YourSecurePassword!
+
+[Install]
+WantedBy=multi-user.target

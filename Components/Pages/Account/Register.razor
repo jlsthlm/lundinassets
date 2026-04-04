@@ -1,0 +1,157 @@
+@page "/account/register"
+@layout MainLayout
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Nav
+
+<PageTitle>Register - Lundin Assets</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-person-plus-fill text-primary" style="font-size: 2.5rem;"></i>
+                        <h4 class="mt-2 fw-bold">Create Account</h4>
+                        <p class="text-muted small">Join the family booking system</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @ErrorMessage
+                        </div>
+                    }
+
+                    <EditForm Model="Model" OnValidSubmit="HandleRegister">
+                        <DataAnnotationsValidator />
+
+                        <div class="row">
+                            <div class="col-sm-6 mb-3">
+                                <label class="form-label fw-semibold">First Name</label>
+                                <InputText @bind-Value="Model.FirstName" class="form-control"
+                                           placeholder="First name" />
+                                <ValidationMessage For="() => Model.FirstName" class="text-danger small" />
+                            </div>
+                            <div class="col-sm-6 mb-3">
+                                <label class="form-label fw-semibold">Last Name</label>
+                                <InputText @bind-Value="Model.LastName" class="form-control"
+                                           placeholder="Last name" />
+                                <ValidationMessage For="() => Model.LastName" class="text-danger small" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <InputText @bind-Value="Model.Email" type="email" class="form-control"
+                                           placeholder="your@email.com" />
+                            </div>
+                            <ValidationMessage For="() => Model.Email" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <InputText @bind-Value="Model.Password" type="password" class="form-control"
+                                           placeholder="Min. 8 characters" />
+                            </div>
+                            <ValidationMessage For="() => Model.Password" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Confirm Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                <InputText @bind-Value="Model.ConfirmPassword" type="password" class="form-control"
+                                           placeholder="Repeat password" />
+                            </div>
+                            <ValidationMessage For="() => Model.ConfirmPassword" class="text-danger small" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-semibold" disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-person-check me-1"></i> Create Account
+                        </button>
+                    </EditForm>
+
+                    <hr class="my-4" />
+                    <p class="text-center mb-0">
+                        Already have an account?
+                        <a href="/account/login" class="text-decoration-none fw-semibold">Sign In</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    RegisterModel Model = new();
+    string? ErrorMessage;
+    bool IsLoading;
+
+    async Task HandleRegister()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+
+        if (Model.Password != Model.ConfirmPassword)
+        {
+            ErrorMessage = "Passwords do not match.";
+            IsLoading = false;
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = Model.Email,
+            Email = Model.Email,
+            FirstName = Model.FirstName,
+            LastName = Model.LastName,
+            EmailConfirmed = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var result = await UserManager.CreateAsync(user, Model.Password);
+        if (!result.Succeeded)
+        {
+            ErrorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+            IsLoading = false;
+            return;
+        }
+
+        await UserManager.AddToRoleAsync(user, "User");
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+
+    class RegisterModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string FirstName { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string LastName { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(8)]
+        public string Password { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

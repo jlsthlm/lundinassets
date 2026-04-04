@@ -1,0 +1,328 @@
+@page "/assets/{Id:int}"
+@inject AssetService AssetService
+@inject BookingService BookingService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>@(CurrentAsset?.Name ?? "Asset") - Lundin Assets</PageTitle>
+
+@if (CurrentAsset == null && !NotFound)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else if (NotFound)
+{
+    <div class="container py-5 text-center text-muted">
+        <i class="bi bi-question-circle" style="font-size: 3rem;"></i>
+        <h4 class="mt-3">Asset not found</h4>
+        <a href="/assets" class="btn btn-primary mt-2">Back to Assets</a>
+    </div>
+}
+else
+{
+    var asset = CurrentAsset!;
+    <div class="container py-4">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/assets">Assets</a></li>
+                <li class="breadcrumb-item active">@asset.Name</li>
+            </ol>
+        </nav>
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <!-- Photo Gallery -->
+                @if (asset.Photos.Any())
+                {
+                    <div class="photo-gallery mb-4">
+                        <div class="main-photo-wrap">
+                            <img src="@asset.Photos.ElementAt(CurrentPhotoIdx).FilePath"
+                                 class="main-photo" alt="@asset.Name" />
+                            @if (asset.Photos.Count > 1)
+                            {
+                                <button class="photo-nav prev" @onclick="PrevPhoto">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <button class="photo-nav next" @onclick="NextPhoto">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <span class="photo-counter">@(CurrentPhotoIdx + 1) / @asset.Photos.Count</span>
+                            }
+                        </div>
+                        @if (asset.Photos.Count > 1)
+                        {
+                            <div class="photo-thumbs mt-2">
+                                @for (int i = 0; i < asset.Photos.Count; i++)
+                                {
+                                    var idx = i;
+                                    <img src="@asset.Photos.ElementAt(idx).FilePath"
+                                         class="photo-thumb @(idx == CurrentPhotoIdx ? "active" : "")"
+                                         @onclick="() => CurrentPhotoIdx = idx" alt="" />
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="asset-card-placeholder asset-detail-placeholder mb-4"
+                         style="color: @asset.Color; background-color: @(asset.Color + "22");">
+                        <i class="bi @asset.TypeIcon"></i>
+                    </div>
+                }
+
+                <!-- Details -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start justify-content-between mb-3">
+                            <div>
+                                <h2 class="mb-1 fw-bold">@asset.Name</h2>
+                                @if (!string.IsNullOrEmpty(asset.Location))
+                                {
+                                    <p class="text-muted mb-0">
+                                        <i class="bi bi-geo-alt me-1"></i>@asset.Location
+                                    </p>
+                                }
+                            </div>
+                            <span class="badge" style="background-color: @asset.Color; font-size: .85rem;">
+                                <i class="bi @asset.TypeIcon me-1"></i>@asset.TypeLabel
+                            </span>
+                        </div>
+
+                        <div class="d-flex gap-3 mb-3 flex-wrap">
+                            @if (asset.BedCount.HasValue)
+                            {
+                                <span class="info-chip">
+                                    <i class="bi bi-moon me-1"></i>@asset.BedCount beds
+                                </span>
+                            }
+                            @if (asset.IsAvailable)
+                            {
+                                <span class="info-chip text-success">
+                                    <i class="bi bi-check-circle me-1"></i>Available for booking
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="info-chip text-danger">
+                                    <i class="bi bi-x-circle me-1"></i>Not available
+                                </span>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(asset.Description))
+                        {
+                            <p class="mb-0">@asset.Description</p>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(asset.Instructions))
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <h5 class="mb-3"><i class="bi bi-info-circle me-2 text-primary"></i>Instructions</h5>
+                            <pre class="instructions-text">@asset.Instructions</pre>
+                        </div>
+                    </div>
+                }
+
+                <!-- Upcoming bookings for this asset -->
+                @if (AssetBookings.Any())
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <h5 class="mb-3"><i class="bi bi-calendar-check me-2 text-primary"></i>Upcoming Bookings</h5>
+                            <div class="d-flex flex-column gap-2">
+                                @foreach (var b in AssetBookings.Take(5))
+                                {
+                                    <div class="booking-chip" style="border-left-color: @asset.Color;">
+                                        <div class="fw-semibold">@b.User.FullName</div>
+                                        <div class="text-muted small">
+                                            @b.StartDate.ToString("MMM d") – @b.EndDate.ToString("MMM d, yyyy")
+                                            <span class="ms-1">(@b.NightCount nights)</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Booking Panel -->
+            <div class="col-lg-5">
+                <div class="card border-0 shadow sticky-top" style="top: 80px;">
+                    <div class="card-header py-3" style="background-color: @asset.Color;">
+                        <h5 class="mb-0 text-white fw-bold">
+                            <i class="bi bi-calendar-plus me-2"></i>Book This Asset
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        @if (!IsAuthenticated)
+                        {
+                            <div class="text-center py-3">
+                                <i class="bi bi-lock text-muted" style="font-size: 2rem;"></i>
+                                <p class="mt-2 text-muted">Sign in to make a booking</p>
+                                <a href="/account/login?returnUrl=/assets/@asset.Id"
+                                   class="btn btn-primary w-100">Sign In</a>
+                            </div>
+                        }
+                        else if (!asset.IsAvailable)
+                        {
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                This asset is currently not available for booking.
+                            </div>
+                        }
+                        else if (BookingSuccess)
+                        {
+                            <div class="text-center py-3">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">Booking Confirmed!</h5>
+                                <p class="text-muted">@BookingForm.Start.ToString("MMM d") – @BookingForm.End.ToString("MMM d, yyyy")</p>
+                                <a href="/bookings" class="btn btn-success mt-2">View My Bookings</a>
+                                <button class="btn btn-outline-secondary mt-2 w-100"
+                                        @onclick="ResetBooking">Make Another Booking</button>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (!string.IsNullOrEmpty(BookingError))
+                            {
+                                <div class="alert alert-danger py-2 mb-3">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>@BookingError
+                                </div>
+                            }
+
+                            <EditForm Model="BookingForm" OnValidSubmit="HandleBook">
+                                <DataAnnotationsValidator />
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Check-in Date</label>
+                                    <InputDate @bind-Value="BookingForm.Start" class="form-control"
+                                               min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Check-out Date</label>
+                                    <InputDate @bind-Value="BookingForm.End" class="form-control"
+                                               min="@BookingForm.Start.AddDays(1).ToString("yyyy-MM-dd")" />
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                                    <InputTextArea @bind-Value="BookingForm.Notes" class="form-control" rows="3"
+                                                  placeholder="Any special requests..." />
+                                </div>
+
+                                @if (BookingForm.End > BookingForm.Start)
+                                {
+                                    <div class="alert alert-light border mb-3 py-2">
+                                        <i class="bi bi-moon me-1"></i>
+                                        <strong>@((BookingForm.End - BookingForm.Start).Days) nights</strong>:
+                                        @BookingForm.Start.ToString("MMM d") – @BookingForm.End.ToString("MMM d, yyyy")
+                                    </div>
+                                }
+
+                                <button type="submit" class="btn btn-primary w-100 fw-semibold" disabled="@IsBooking">
+                                    @if (IsBooking) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                                    <i class="bi bi-calendar-check me-1"></i> Confirm Booking
+                                </button>
+                            </EditForm>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    Asset? CurrentAsset;
+    List<Booking> AssetBookings = new();
+    bool NotFound, IsAuthenticated, BookingSuccess, IsBooking;
+    int CurrentPhotoIdx;
+    string? BookingError;
+    string? UserId;
+    BookingInputModel BookingForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentAsset = await AssetService.GetByIdAsync(Id);
+        if (CurrentAsset == null) { NotFound = true; return; }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        IsAuthenticated = state.User.Identity?.IsAuthenticated == true;
+        UserId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        AssetBookings = await BookingService.GetForRangeAsync(today, today.AddDays(365), Id);
+    }
+
+    void PrevPhoto()
+    {
+        CurrentPhotoIdx = (CurrentPhotoIdx - 1 + CurrentAsset!.Photos.Count) % CurrentAsset.Photos.Count;
+    }
+
+    void NextPhoto()
+    {
+        CurrentPhotoIdx = (CurrentPhotoIdx + 1) % CurrentAsset!.Photos.Count;
+    }
+
+    async Task HandleBook()
+    {
+        if (BookingForm.End <= BookingForm.Start)
+        {
+            BookingError = "Check-out must be after check-in.";
+            return;
+        }
+
+        IsBooking = true;
+        BookingError = null;
+
+        var start = DateOnly.FromDateTime(BookingForm.Start);
+        var end = DateOnly.FromDateTime(BookingForm.End);
+
+        var (available, reason) = await BookingService.CheckAvailabilityAsync(Id, start, end);
+        if (!available)
+        {
+            BookingError = reason ?? "Not available for selected dates.";
+            IsBooking = false;
+            return;
+        }
+
+        await BookingService.CreateAsync(new Booking
+        {
+            AssetId = Id,
+            UserId = UserId!,
+            StartDate = start,
+            EndDate = end,
+            Notes = BookingForm.Notes,
+            Status = BookingStatus.Confirmed
+        });
+
+        BookingSuccess = true;
+        IsBooking = false;
+
+        // Refresh bookings list
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        AssetBookings = await BookingService.GetForRangeAsync(today, today.AddDays(365), Id);
+    }
+
+    void ResetBooking()
+    {
+        BookingSuccess = false;
+        BookingForm = new BookingInputModel();
+        BookingError = null;
+    }
+
+    class BookingInputModel
+    {
+        public DateTime Start { get; set; } = DateTime.Today;
+        public DateTime End { get; set; } = DateTime.Today.AddDays(7);
+        public string? Notes { get; set; }
+    }
+}

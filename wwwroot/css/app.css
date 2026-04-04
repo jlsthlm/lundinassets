@@ -1,0 +1,602 @@
+/* =============================================
+   Lundin Assets — Global Styles
+   ============================================= */
+
+:root {
+  --brand-primary: #1a2942;
+  --brand-accent: #0d9488;
+  --brand-gold: #f59e0b;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,.07), 0 4px 6px rgba(0,0,0,.05);
+  --radius: .75rem;
+}
+
+/* Base */
+body {
+  background-color: #f4f6f9;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+}
+
+a { color: inherit; }
+
+pre.instructions-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: .9rem;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: .5rem;
+  border: 1px solid #e2e8f0;
+  margin: 0;
+}
+
+.tiny { font-size: .7rem; }
+
+/* =============================================
+   Hero Banner
+   ============================================= */
+.hero-banner {
+  background: linear-gradient(135deg, #1a2942 0%, #0d3060 50%, #0a4a7a 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.hero-icon {
+  font-size: 3rem;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.3));
+}
+
+/* =============================================
+   Stat Cards
+   ============================================= */
+.stat-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: .625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #1e293b;
+}
+
+.stat-label {
+  font-size: .8rem;
+  color: #64748b;
+  margin-top: .2rem;
+}
+
+/* =============================================
+   Asset Cards
+   ============================================= */
+.asset-card {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-sm);
+  transition: transform .15s ease, box-shadow .15s ease;
+  overflow: hidden;
+}
+
+.asset-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.asset-card-photo {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.asset-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .3s ease;
+}
+
+.asset-card:hover .asset-card-img {
+  transform: scale(1.04);
+}
+
+.asset-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+}
+
+.asset-detail-placeholder {
+  height: 260px;
+  border-radius: var(--radius);
+  font-size: 5rem;
+}
+
+.asset-type-badge {
+  position: absolute;
+  top: .75rem;
+  left: .75rem;
+  color: white;
+  font-size: .7rem;
+  padding: .25rem .6rem;
+  border-radius: 100px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+/* =============================================
+   Photo Gallery
+   ============================================= */
+.photo-gallery {
+  position: relative;
+}
+
+.main-photo-wrap {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.main-photo {
+  width: 100%;
+  height: 380px;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 576px) {
+  .main-photo { height: 240px; }
+}
+
+.photo-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,.85);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background .15s;
+  z-index: 1;
+}
+
+.photo-nav:hover { background: white; }
+.photo-nav.prev { left: .75rem; }
+.photo-nav.next { right: .75rem; }
+
+.photo-counter {
+  position: absolute;
+  bottom: .75rem;
+  right: .75rem;
+  background: rgba(0,0,0,.5);
+  color: white;
+  font-size: .75rem;
+  padding: .2rem .5rem;
+  border-radius: 100px;
+}
+
+.photo-thumbs {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  padding-bottom: .25rem;
+}
+
+.photo-thumb {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: .375rem;
+  cursor: pointer;
+  opacity: .6;
+  transition: opacity .15s;
+  flex-shrink: 0;
+}
+
+.photo-thumb.active, .photo-thumb:hover { opacity: 1; }
+
+/* =============================================
+   Photo Management
+   ============================================= */
+.photo-manage-card {
+  position: relative;
+  border-radius: .5rem;
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+
+.photo-manage-card.is-main {
+  border-color: #0d9488;
+}
+
+.photo-manage-img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-main-badge {
+  position: absolute;
+  top: .25rem;
+  left: .25rem;
+  background: #0d9488;
+  color: white;
+  font-size: .65rem;
+  padding: .15rem .4rem;
+  border-radius: 100px;
+  font-weight: 600;
+}
+
+.photo-manage-actions {
+  position: absolute;
+  bottom: .25rem;
+  right: .25rem;
+  display: flex;
+  gap: .25rem;
+}
+
+/* =============================================
+   Booking UI
+   ============================================= */
+.booking-chip {
+  background: #f8fafc;
+  border-left: 3px solid #0d9488;
+  padding: .75rem 1rem;
+  border-radius: 0 .5rem .5rem 0;
+}
+
+.booking-card {
+  border-radius: var(--radius) !important;
+  transition: transform .1s;
+}
+
+.booking-card:hover { transform: translateY(-1px); }
+
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: .25rem .75rem;
+  border-radius: 100px;
+  font-size: .85rem;
+}
+
+/* =============================================
+   Calendar
+   ============================================= */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  background: #e2e8f0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.calendar-day-header {
+  background: var(--brand-primary);
+  color: white;
+  text-align: center;
+  padding: .5rem;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.calendar-cell {
+  background: white;
+  min-height: 100px;
+  padding: .4rem;
+  cursor: pointer;
+  transition: background .1s;
+}
+
+.calendar-cell:hover { background: #f8fafc; }
+.calendar-cell.other-month { background: #fafbfc; }
+.calendar-cell.other-month .calendar-cell-header { color: #c1c8d4; }
+.calendar-cell.today { background: #eff8ff; }
+
+@media (max-width: 576px) {
+  .calendar-cell { min-height: 60px; padding: .25rem; }
+}
+
+.calendar-cell-header {
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: .25rem;
+  color: #475569;
+}
+
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--brand-primary);
+  color: white;
+  border-radius: 50%;
+  font-size: .75rem;
+}
+
+.calendar-cell-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-event {
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: .68rem;
+  color: white;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.cal-event-label { font-weight: 500; }
+
+.cal-more {
+  font-size: .65rem;
+  color: #94a3b8;
+  padding-left: 2px;
+}
+
+/* =============================================
+   Timeline / Gantt
+   ============================================= */
+.timeline-container {
+  border-radius: var(--radius);
+  background: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.timeline-inner {
+  min-width: max-content;
+}
+
+.timeline-row {
+  display: flex;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.timeline-row:last-child { border-bottom: none; }
+
+.timeline-asset-label {
+  flex-shrink: 0;
+  padding: .6rem .75rem;
+  border-right: 2px solid #e2e8f0;
+  background: #fafbfc;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.timeline-month-header {
+  text-align: center;
+  padding: .4rem;
+  font-size: .75rem;
+  font-weight: 600;
+  background: var(--brand-primary);
+  color: white;
+  border-right: 1px solid rgba(255,255,255,.1);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.timeline-day-header {
+  flex-shrink: 0;
+  text-align: center;
+  padding: .25rem .1rem;
+  border-right: 1px solid #f1f5f9;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.timeline-day-header.today {
+  background: #eff8ff;
+  color: var(--brand-primary);
+}
+
+.timeline-day-header.weekend { background: #fef9f0; }
+
+.timeline-asset-row { min-height: 52px; }
+
+.timeline-cells-wrap {
+  display: flex;
+}
+
+.timeline-cell {
+  flex-shrink: 0;
+  border-right: 1px solid #f1f5f9;
+  height: 52px;
+}
+
+.timeline-cell.today { background: rgba(13,148,136,.06); }
+.timeline-cell.weekend { background: #fef9f0; }
+.timeline-cell.blocked { background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 4px, #e8ecf0 4px, #e8ecf0 8px); }
+
+.timeline-booking {
+  position: absolute;
+  top: 8px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: white;
+  font-size: .72rem;
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: opacity .1s;
+}
+
+.timeline-booking:hover { opacity: .9; }
+
+.timeline-booking-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-tooltip {
+  position: fixed;
+  background: rgba(0,0,0,.85);
+  color: white;
+  padding: .5rem .75rem;
+  border-radius: .5rem;
+  font-size: .8rem;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -110%);
+}
+
+/* =============================================
+   Color Swatches (Admin)
+   ============================================= */
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: transform .1s, border-color .1s;
+}
+
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected { border-color: #1e293b; transform: scale(1.15); }
+
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* =============================================
+   Avatar / Profile
+   ============================================= */
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,.2);
+  color: white;
+  border-radius: 50%;
+  font-size: .7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.avatar-initials-lg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a2942;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.profile-photo-lg {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: var(--shadow-md);
+}
+
+.profile-photo-wrapper { flex-shrink: 0; }
+
+/* =============================================
+   Footer
+   ============================================= */
+.footer {
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 2rem;
+}
+
+/* =============================================
+   Navbar
+   ============================================= */
+.navbar-brand { font-size: 1.1rem; }
+
+.nav-link {
+  font-size: .9rem;
+  padding: .5rem .75rem !important;
+  border-radius: .375rem;
+  transition: background .15s;
+}
+
+.nav-link.active {
+  background: rgba(255,255,255,.1);
+}
+
+/* =============================================
+   Responsive Tweaks
+   ============================================= */
+@media (max-width: 576px) {
+  .container { padding-left: 1rem; padding-right: 1rem; }
+  h2 { font-size: 1.4rem; }
+  .stat-card { padding: 1rem; }
+  .stat-number { font-size: 1.4rem; }
+}
+
+/* =============================================
+   Utilities
+   ============================================= */
+.border-radius { border-radius: var(--radius) !important; }
+.shadow-card { box-shadow: var(--shadow-md) !important; }

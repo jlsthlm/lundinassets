@@ -1,0 +1,110 @@
+@page "/bookings"
+@attribute [Authorize]
+@inject BookingService BookingService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>My Bookings - Lundin Assets</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold"><i class="bi bi-journal-bookmark me-2"></i>My Bookings</h2>
+
+    @if (UserBookings == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (!UserBookings.Any())
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+            <p class="mt-3">No bookings yet.</p>
+            <a href="/assets" class="btn btn-primary">Browse Assets</a>
+        </div>
+    }
+    else
+    {
+        var upcoming = UserBookings.Where(b => b.EndDate >= DateOnly.FromDateTime(DateTime.Today) && b.Status != BookingStatus.Cancelled).ToList();
+        var past = UserBookings.Where(b => b.EndDate < DateOnly.FromDateTime(DateTime.Today) && b.Status != BookingStatus.Cancelled).ToList();
+        var cancelled = UserBookings.Where(b => b.Status == BookingStatus.Cancelled).ToList();
+
+        @if (upcoming.Any())
+        {
+            <h5 class="text-muted mb-3">Upcoming</h5>
+            <div class="row g-3 mb-4">
+                @foreach (var b in upcoming.OrderBy(b => b.StartDate))
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <BookingCard Booking="b" OnCancel="CancelBooking" />
+                    </div>
+                }
+            </div>
+        }
+
+        @if (past.Any())
+        {
+            <h5 class="text-muted mb-3">Past</h5>
+            <div class="row g-3 mb-4">
+                @foreach (var b in past.OrderByDescending(b => b.StartDate))
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <BookingCard Booking="b" ShowCancel="false" />
+                    </div>
+                }
+            </div>
+        }
+
+        @if (cancelled.Any())
+        {
+            <details class="mt-2">
+                <summary class="text-muted mb-3" style="cursor:pointer;">Cancelled (@cancelled.Count)</summary>
+                <div class="row g-3 mt-1">
+                    @foreach (var b in cancelled.OrderByDescending(b => b.CreatedAt))
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <BookingCard Booking="b" ShowCancel="false" />
+                        </div>
+                    }
+                </div>
+            </details>
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show align-items-center text-bg-success border-0">
+                <div class="d-flex">
+                    <div class="toast-body">@Message</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                            @onclick="() => Message = null"></button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    List<Booking>? UserBookings;
+    string? Message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userId != null)
+            UserBookings = await BookingService.GetByUserAsync(userId);
+    }
+
+    async Task CancelBooking(int bookingId)
+    {
+        await BookingService.CancelAsync(bookingId);
+        Message = "Booking cancelled.";
+        await LoadAsync();
+    }
+}

@@ -1,0 +1,148 @@
+@page "/admin/bookings"
+@attribute [Authorize(Roles = "Admin")]
+@inject BookingService BookingService
+@inject AssetService AssetService
+
+<PageTitle>Manage Bookings - Lundin Assets</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold"><i class="bi bi-calendar-check me-2"></i>Manage Bookings</h2>
+
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+        <select class="form-select form-select-sm" style="width:auto;"
+                @bind="FilterAssetId" @bind:after="LoadBookings">
+            <option value="">All Assets</option>
+            @foreach (var a in AllAssets)
+            {
+                <option value="@a.Id">@a.Name</option>
+            }
+        </select>
+        <select class="form-select form-select-sm" style="width:auto;"
+                @bind="FilterStatus" @bind:after="LoadBookings">
+            <option value="">All Statuses</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Pending">Pending</option>
+            <option value="Cancelled">Cancelled</option>
+        </select>
+    </div>
+
+    @if (AllBookings == null)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (!Filtered.Any())
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+            <p class="mt-2">No bookings found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Asset</th>
+                            <th>User</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th class="d-none d-md-table-cell">Nights</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Filtered)
+                        {
+                            <tr class="@(b.Status == BookingStatus.Cancelled ? "table-secondary opacity-50" : "")">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot" style="background-color: @b.Asset.Color;"></span>
+                                        <span class="fw-semibold small">@b.Asset.Name</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold small">@b.User.FullName</div>
+                                    <div class="text-muted tiny">@b.User.Email</div>
+                                </td>
+                                <td class="small">@b.StartDate.ToString("MMM d, yyyy")</td>
+                                <td class="small">@b.EndDate.ToString("MMM d, yyyy")</td>
+                                <td class="d-none d-md-table-cell small text-muted">@b.NightCount</td>
+                                <td>
+                                    @switch (b.Status)
+                                    {
+                                        case BookingStatus.Confirmed:
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Confirmed</span>
+                                            break;
+                                        case BookingStatus.Pending:
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
+                                            break;
+                                        case BookingStatus.Cancelled:
+                                            <span class="badge bg-secondary-subtle text-secondary border">Cancelled</span>
+                                            break;
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (b.Status != BookingStatus.Cancelled)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => CancelBooking(b.Id)">
+                                            <i class="bi bi-x me-1"></i>Cancel
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show align-items-center text-bg-success border-0">
+                <div class="d-flex">
+                    <div class="toast-body">@Message</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                            @onclick="() => Message = null"></button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    List<Booking>? AllBookings;
+    List<Asset> AllAssets = new();
+    int? FilterAssetId;
+    string FilterStatus = "";
+    string? Message;
+
+    IEnumerable<Booking> Filtered => AllBookings?
+        .Where(b => !FilterAssetId.HasValue || b.AssetId == FilterAssetId)
+        .Where(b => string.IsNullOrEmpty(FilterStatus) || b.Status.ToString() == FilterStatus)
+        .OrderByDescending(b => b.StartDate)
+        ?? Enumerable.Empty<Booking>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AllAssets = await AssetService.GetAllAsync();
+        await LoadBookings();
+    }
+
+    async Task LoadBookings()
+    {
+        AllBookings = await BookingService.GetAllIncludingCancelledAsync();
+    }
+
+    async Task CancelBooking(int id)
+    {
+        await BookingService.CancelAsync(id);
+        Message = "Booking cancelled.";
+        await LoadBookings();
+    }
+}

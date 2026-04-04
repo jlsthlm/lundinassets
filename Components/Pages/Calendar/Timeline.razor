@@ -1,0 +1,215 @@
+@page "/timeline"
+@inject BookingService BookingService
+@inject AssetService AssetService
+
+<PageTitle>Timeline - Lundin Assets</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <h2 class="mb-0 fw-bold"><i class="bi bi-bar-chart-steps me-2"></i>Booking Timeline</h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <select class="form-select form-select-sm" style="width:auto;"
+                    @bind="RangeDays" @bind:after="LoadBookings">
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+            </select>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" @onclick="ShiftBack">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="btn btn-outline-secondary px-3" @onclick="GoToday">Today</button>
+                <button class="btn btn-outline-secondary" @onclick="ShiftForward">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+            <span class="small text-muted">
+                @StartDate.ToString("MMM d") – @EndDate.ToString("MMM d, yyyy")
+            </span>
+            <a href="/calendar" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-calendar3 me-1"></i>Calendar
+            </a>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (!AllAssets.Any())
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox" style="font-size:2rem;"></i>
+            <p class="mt-2">No assets found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="timeline-container" style="overflow-x: auto;">
+            <div class="timeline-inner" style="min-width: @(AssetLabelWidth + Days.Count * CellWidth)px;">
+                <!-- Header row: months -->
+                <div class="timeline-row">
+                    <div class="timeline-asset-label" style="width: @(AssetLabelWidth)px;"></div>
+                    @foreach (var grp in MonthGroups)
+                    {
+                        <div class="timeline-month-header" style="width: @(grp.Count * CellWidth)px;">
+                            @grp.Month.ToString("MMMM yyyy")
+                        </div>
+                    }
+                </div>
+                <!-- Header row: day numbers -->
+                <div class="timeline-row">
+                    <div class="timeline-asset-label" style="width: @(AssetLabelWidth)px;">
+                        <span class="text-muted small">Asset</span>
+                    </div>
+                    @foreach (var d in Days)
+                    {
+                        bool isTod = d == Today;
+                        bool isWknd = d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday;
+                        <div class="timeline-day-header @(isTod ? "today" : "") @(isWknd ? "weekend" : "")"
+                             style="width: @(CellWidth)px;">
+                            <div class="small fw-bold">@d.Day</div>
+                            <div class="tiny text-muted">@d.ToString("ddd")[..2]</div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Asset rows -->
+                @foreach (var asset in AllAssets)
+                {
+                    var assetBookings = AllBookings.Where(b => b.AssetId == asset.Id).ToList();
+                    <div class="timeline-row timeline-asset-row">
+                        <div class="timeline-asset-label" style="width: @(AssetLabelWidth)px;">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="color-dot" style="background-color: @asset.Color;"></span>
+                                <div>
+                                    <div class="fw-semibold small">@asset.Name</div>
+                                    @if (!string.IsNullOrEmpty(asset.Location))
+                                    {
+                                        <div class="tiny text-muted">@asset.Location</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="timeline-cells-wrap" style="position:relative; width: @(Days.Count * CellWidth)px; height: 52px;">
+                            @foreach (var d in Days)
+                            {
+                                bool isTod = d == Today;
+                                bool isWknd = d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday;
+                                var isBlocked = asset.UnavailabilityPeriods.Any(u => u.StartDate <= d && u.EndDate >= d);
+                                <div class="timeline-cell @(isTod ? "today" : "") @(isWknd ? "weekend" : "") @(isBlocked ? "blocked" : "")"
+                                     style="width: @(CellWidth)px;"></div>
+                            }
+                            @foreach (var b in assetBookings)
+                            {
+                                int startOffset = Math.Max(0, b.StartDate.DayNumber - StartDate.DayNumber);
+                                int endOffset = Math.Min(Days.Count, b.EndDate.DayNumber - StartDate.DayNumber + 1);
+                                int width = endOffset - startOffset;
+                                if (width <= 0) continue;
+
+                                <div class="timeline-booking"
+                                     style="left: @(startOffset * CellWidth + 2)px; width: @(width * CellWidth - 4)px; background-color: @b.Asset.Color;"
+                                     title="@b.Asset.Name: @b.User.FullName (@b.StartDate.ToString("MMM d") - @b.EndDate.ToString("MMM d"))">
+                                    <span class="timeline-booking-label">@b.User.FullName</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="d-flex flex-wrap gap-3 mt-4 align-items-center">
+            <span class="text-muted small">Legend:</span>
+            @foreach (var a in AllAssets)
+            {
+                <span class="d-flex align-items-center gap-1 small">
+                    <span class="color-dot" style="background-color: @a.Color;"></span>
+                    @a.Name
+                </span>
+            }
+            <span class="d-flex align-items-center gap-1 small">
+                <span class="color-dot" style="background-color: #e5e7eb;"></span>
+                Blocked/Unavailable
+            </span>
+        </div>
+    }
+
+    @if (TooltipBooking != null)
+    {
+        <div class="timeline-tooltip" style="top:@TooltipY;left:@TooltipX">
+            <strong>@TooltipBooking.Asset.Name</strong><br />
+            @TooltipBooking.User.FullName<br />
+            <small>@TooltipBooking.StartDate.ToString("MMM d") – @TooltipBooking.EndDate.ToString("MMM d")</small>
+        </div>
+    }
+</div>
+
+@code {
+    List<Asset> AllAssets = new();
+    List<Booking> AllBookings = new();
+    DateOnly StartDate = DateOnly.FromDateTime(DateTime.Today);
+    DateOnly Today = DateOnly.FromDateTime(DateTime.Today);
+    int RangeDays = 30;
+    bool IsLoading = true;
+    Booking? TooltipBooking;
+    string TooltipX = "0", TooltipY = "0";
+
+    const int AssetLabelWidth = 200;
+    const int CellWidth = 32;
+
+    DateOnly EndDate => StartDate.AddDays(RangeDays - 1);
+    List<DateOnly> Days => Enumerable.Range(0, RangeDays).Select(i => StartDate.AddDays(i)).ToList();
+
+    record MonthGroup(DateOnly Month, int Count);
+    List<MonthGroup> MonthGroups
+    {
+        get
+        {
+            return Days.GroupBy(d => new DateOnly(d.Year, d.Month, 1))
+                .Select(g => new MonthGroup(g.Key, g.Count()))
+                .ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AllAssets = await AssetService.GetAllAsync();
+        // Load unavailability periods
+        foreach (var a in AllAssets)
+        {
+            var full = await AssetService.GetByIdAsync(a.Id);
+            if (full != null)
+            {
+                a.UnavailabilityPeriods = full.UnavailabilityPeriods;
+            }
+        }
+        await LoadBookings();
+    }
+
+    async Task LoadBookings()
+    {
+        IsLoading = true;
+        AllBookings = await BookingService.GetForRangeAsync(StartDate, EndDate);
+        IsLoading = false;
+    }
+
+    async Task ShiftBack()
+    {
+        StartDate = StartDate.AddDays(-RangeDays);
+        await LoadBookings();
+    }
+
+    async Task ShiftForward()
+    {
+        StartDate = StartDate.AddDays(RangeDays);
+        await LoadBookings();
+    }
+
+    async Task GoToday()
+    {
+        StartDate = Today;
+        await LoadBookings();
+    }
+}

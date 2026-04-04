@@ -860,38 +860,50 @@ a:hover { color: var(--primary-dark); }
   text-shadow: 0 1px 2px rgba(0,0,0,.3);
 }
 
-/* Week / Month view — chips */
-.vtl-period-label {
-  justify-content: center;
+/* Week / Month view — background cells (Pass 1) */
+.vtl-bg-cell {
+  border-bottom: 1px solid #f1f5f9;
+  border-left: 1px solid #f1f5f9;
+  min-height: 52px;
 }
-.vtl-period-cell {
-  height: auto;
-  min-height: 48px;
-  padding: 5px 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.vtl-chip {
-  border-radius: 6px;
+.vtl-bg-cell.vtl-today   { background: #f0f9ff; }
+.vtl-bg-cell.vtl-weekend { background: #f8fafc; }
+
+/* Week / Month view — spanning booking blocks (Pass 2) */
+.vtl-span-block {
+  position: relative;
+  z-index: 2;
+  margin: 4px 6px;
+  border-radius: 8px;
   color: white;
-  padding: 4px 8px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  justify-content: flex-start;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  overflow: hidden;
 }
-.vtl-chip-name {
-  font-size: .72rem;
+.vtl-span-unavail {
+  background: #d1d5db !important;
+  opacity: .75;
+}
+.vtl-span-name {
+  font-size: .8rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 1px 2px rgba(0,0,0,.2);
 }
-.vtl-chip-dates {
-  font-size: .62rem;
-  opacity: .85;
+.vtl-span-dates {
+  font-size: .68rem;
+  opacity: .88;
+  margin-top: 2px;
+}
+
+/* Period label cell (week/month date column) */
+.vtl-period-label {
+  justify-content: center;
 }
 
 /* =============================================

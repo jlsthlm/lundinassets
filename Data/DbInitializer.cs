@@ -32,19 +32,13 @@ public static class DbInitializer
             }
         }
 
-        // Schema migrations — add new columns to existing tables if they don't exist
-        // (EnsureCreated only creates missing tables; it won't add new columns to existing ones)
-        try
-        {
-            await db.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE `Bookings` ADD COLUMN IF NOT EXISTS `IsFullBooking` tinyint(1) NOT NULL DEFAULT 1");
-            await db.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE `Bookings` ADD COLUMN IF NOT EXISTS `BedsBooked` int NULL");
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Schema migration skipped or failed: {Message}", ex.Message);
-        }
+        // Schema migrations — add new columns to existing tables if they don't exist.
+        // (EnsureCreated only creates missing tables; it won't add columns to existing ones.)
+        // MySQL 8 doesn't support ADD COLUMN IF NOT EXISTS, so we check INFORMATION_SCHEMA first.
+        await AddColumnIfMissingAsync(db, logger, "Bookings", "IsFullBooking",
+            "tinyint(1) NOT NULL DEFAULT 1");
+        await AddColumnIfMissingAsync(db, logger, "Bookings", "BedsBooked",
+            "int NULL");
 
         // Ensure upload directories exist
         Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "assets"));
@@ -77,6 +71,8 @@ public static class DbInitializer
             if (result.Succeeded)
                 await userManager.AddToRoleAsync(admin, "Admin");
         }
+
+        // ── end of startup migrations ──────────────────────────────────────────
 
         // Seed default assets if none exist
         if (!await db.Assets.AnyAsync())
@@ -112,6 +108,37 @@ public static class DbInitializer
             };
             db.Assets.AddRange(assets);
             await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task AddColumnIfMissingAsync(
+        ApplicationDbContext db, ILogger logger, string table, string column, string definition)
+    {
+        try
+        {
+            var conn = db.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+
+            await using var check = conn.CreateCommand();
+            check.CommandText =
+                $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                $"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'";
+            var exists = Convert.ToInt64(await check.ExecuteScalarAsync()) > 0;
+
+            if (!exists)
+            {
+                logger.LogInformation("Adding column {Column} to {Table}...", column, table);
+                await using var alter = conn.CreateCommand();
+                alter.CommandText = $"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}";
+                await alter.ExecuteNonQueryAsync();
+            }
+
+            if (!wasOpen) await conn.CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Migration for {Table}.{Column} failed: {Message}", table, column, ex.Message);
         }
     }
 }

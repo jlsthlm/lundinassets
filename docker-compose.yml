@@ -23,8 +23,6 @@ services:
     build: .
     container_name: lundinassets-app
     restart: unless-stopped
-    ports:
-      - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=lundinassets;User=lundin_user;Password=db_password_CHANGE_ME;AllowPublicKeyRetrieval=true;SslMode=none;"
@@ -32,6 +30,9 @@ services:
       AdminUser__Password: Admin1234!
     volumes:
       - uploads:/app/wwwroot/uploads
+    networks:
+      - default
+      - ontrack-net
     depends_on:
       db:
         condition: service_healthy
@@ -39,3 +40,8 @@ services:
 volumes:
   mysql_data:
   uploads:
+
+networks:
+  ontrack-net:
+    external: true
+    name: ontrack_ontrack-net

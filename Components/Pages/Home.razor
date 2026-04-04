@@ -1,140 +1,415 @@
 @page "/"
 @attribute [Authorize]
-@inject AssetService Assets
-@inject BookingService Bookings
+@inject AssetService AssetSvc
+@inject BookingService BookingSvc
+@inject AuthenticationStateProvider AuthState
 
-<PageTitle>Lundin Assets - Family Booking</PageTitle>
+<PageTitle>Home - Lundin Assets</PageTitle>
 
-<div class="hero-banner">
-    <div class="container py-5 text-center">
-        <i class="bi bi-key-fill text-warning hero-icon"></i>
-        <h1 class="display-5 fw-bold text-white mt-3">Lundin Family Assets</h1>
-        <p class="lead text-white-50">Book and manage our shared properties, cars and more.</p>
-        <div class="d-flex gap-3 justify-content-center mt-4 flex-wrap">
-            <a href="/assets" class="btn btn-warning btn-lg fw-semibold">
-                <i class="bi bi-grid me-2"></i> View Assets
-            </a>
-            <a href="/calendar" class="btn btn-outline-light btn-lg">
-                <i class="bi bi-calendar3 me-2"></i> Calendar
-            </a>
+@if (IsLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else
+{
+    <!-- Welcome header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-0" style="letter-spacing:-.02em;">
+                Welcome back, @FirstName <span style="font-weight:300;">👋</span>
+            </h2>
+            <p class="text-muted mb-0" style="font-size:.85rem;">
+                @DateTime.Today.ToString("dddd, MMMM d, yyyy")
+            </p>
+        </div>
+        <a href="/assets" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus me-1"></i> New Booking
+        </a>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#eff6ff;color:#3b82f6;">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <div>
+                    <div class="stat-number">@MyUpcoming.Count</div>
+                    <div class="stat-label">Upcoming bookings</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#f0fdf4;color:#10b981;">
+                    <i class="bi bi-moon-stars"></i>
+                </div>
+                <div>
+                    <div class="stat-number">@MyNightsThisYear</div>
+                    <div class="stat-label">Your nights this year</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#fff7ed;color:#f97316;">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div>
+                    <div class="stat-number">
+                        @if (DaysUntilNext.HasValue)
+                        {
+                            @(DaysUntilNext.Value == 0 ? "Today" : $"{DaysUntilNext.Value}d")
+                        }
+                        else
+                        {
+                            <span style="font-size:1.1rem;">—</span>
+                        }
+                    </div>
+                    <div class="stat-label">Days to next trip</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#faf5ff;color:#8b5cf6;">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div>
+                    <div class="stat-number">@FamilyNightsThisYear</div>
+                    <div class="stat-label">Family nights this year</div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="container py-5">
-    @if (AllAssets == null)
-    {
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary"></div>
-        </div>
-    }
-    else
-    {
-        <div class="row g-3 mb-5">
-            <div class="col-sm-4">
-                <div class="stat-card">
-                    <div class="stat-icon bg-primary-subtle text-primary">
-                        <i class="bi bi-buildings"></i>
-                    </div>
-                    <div>
-                        <div class="stat-number">@AllAssets.Count</div>
-                        <div class="stat-label">Assets</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-4">
-                <div class="stat-card">
-                    <div class="stat-icon bg-success-subtle text-success">
-                        <i class="bi bi-check-circle"></i>
-                    </div>
-                    <div>
-                        <div class="stat-number">@AllAssets.Count(a => a.IsAvailable)</div>
-                        <div class="stat-label">Available</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-4">
-                <div class="stat-card">
-                    <div class="stat-icon bg-info-subtle text-info">
-                        <i class="bi bi-calendar-check"></i>
-                    </div>
-                    <div>
-                        <div class="stat-number">@UpcomingCount</div>
-                        <div class="stat-label">Upcoming Bookings</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="row g-4">
 
-        <h3 class="mb-4 fw-bold">Our Assets</h3>
-        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-            @foreach (var asset in AllAssets)
-            {
-                <div class="col">
-                    <a href="/assets/@asset.Id" class="text-decoration-none">
-                        <div class="card asset-card h-100">
-                            <div class="asset-card-photo">
-                                @if (asset.PrimaryPhoto != null)
-                                {
-                                    <img src="@asset.PrimaryPhoto.FilePath" class="asset-card-img" alt="@asset.Name" />
-                                }
-                                else
-                                {
-                                    <div class="asset-card-placeholder" style="color: @asset.Color; background-color: @(asset.Color + "22");">
-                                        <i class="bi @asset.TypeIcon"></i>
+        <!-- Left column: upcoming + recent -->
+        <div class="col-lg-7">
+
+            <!-- Your Upcoming Bookings -->
+            <div class="card mb-4">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-calendar-check me-2 text-primary"></i>Your Upcoming Bookings</span>
+                    <a href="/bookings" class="btn btn-sm btn-light" style="font-size:.75rem;">View all</a>
+                </div>
+                <div class="card-body p-0">
+                    @if (!MyUpcoming.Any())
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-calendar-x" style="font-size:2rem;opacity:.4;"></i>
+                            <p class="mt-2 mb-0 small">No upcoming bookings.</p>
+                            <a href="/assets" class="btn btn-sm btn-primary mt-2">Browse Assets</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var b in MyUpcoming.Take(5))
+                            {
+                                <a href="/assets/@b.AssetId"
+                                   class="list-group-item list-group-item-action border-0 px-3 py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="booking-color-bar"
+                                             style="background:@b.Asset.Color;"></div>
+                                        <div style="flex:1;min-width:0;">
+                                            <div class="fw-600 small">@b.Asset.Name</div>
+                                            @if (!string.IsNullOrEmpty(b.Asset.Location))
+                                            {
+                                                <div class="text-muted tiny">
+                                                    <i class="bi bi-geo-alt me-1"></i>@b.Asset.Location
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="text-end" style="flex-shrink:0;">
+                                            <div class="small fw-600">
+                                                @b.StartDate.ToString("MMM d") – @b.EndDate.ToString("MMM d")
+                                            </div>
+                                            <div class="tiny text-muted">@b.NightCount nights</div>
+                                        </div>
+                                        <div>
+                                            @{
+                                                var daysAway = b.StartDate.DayNumber - Today.DayNumber;
+                                            }
+                                            @if (daysAway == 0)
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">Today</span>
+                                            }
+                                            else if (daysAway <= 7)
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">@daysAway&#160;d</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-muted border">@daysAway&#160;d</span>
+                                            }
+                                        </div>
                                     </div>
-                                }
-                                <span class="asset-type-badge" style="background-color: @asset.Color;">
-                                    <i class="bi @asset.TypeIcon me-1"></i>@asset.TypeLabel
-                                </span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Recent Family Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-activity me-2 text-primary"></i>Recent Family Activity
+                </div>
+                <div class="card-body p-0">
+                    @if (!RecentAll.Any())
+                    {
+                        <p class="text-muted text-center py-3 small mb-0">No recent bookings.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var b in RecentAll)
+                            {
+                                <div class="list-group-item border-0 px-3 py-2">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="booking-color-bar"
+                                             style="background:@b.Asset.Color;"></div>
+                                        <div style="flex:1;min-width:0;">
+                                            <div class="small fw-600">@b.User.FullName
+                                                <span class="text-muted fw-normal">at</span>
+                                                @b.Asset.Name
+                                            </div>
+                                            <div class="tiny text-muted">
+                                                @b.StartDate.ToString("MMM d") – @b.EndDate.ToString("MMM d, yyyy")
+                                                &middot; @b.NightCount nights
+                                            </div>
+                                        </div>
+                                        @if (b.EndDate < Today)
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary border tiny">Past</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success-subtle text-success border tiny">Upcoming</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column: utilization -->
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-bar-chart me-2 text-primary"></i>Asset Utilization</span>
+                    <span class="text-muted" style="font-size:.72rem;">Last 90 days</span>
+                </div>
+                <div class="card-body">
+                    @if (!Utilization.Any())
+                    {
+                        <p class="text-muted text-center small mb-0">No data yet.</p>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-4">
+                            @foreach (var u in Utilization)
+                            {
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="color-dot" style="background:@u.Asset.Color;"></span>
+                                            <span class="fw-600 small">@u.Asset.Name</span>
+                                        </div>
+                                        <span class="fw-700 small" style="color:@u.Asset.Color;">
+                                            @u.Pct%
+                                        </span>
+                                    </div>
+                                    <div class="util-bar-bg">
+                                        <div class="util-bar-fill"
+                                             style="width:@(u.Pct)%;background:@u.Asset.Color;"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-1">
+                                        <span class="tiny text-muted">@u.BookedDays booked days</span>
+                                        <span class="tiny text-muted">@u.BookingCount booking@(u.BookingCount == 1 ? "" : "s")</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Year-to-date summary -->
+                        <div class="mt-4 pt-3" style="border-top:1px solid var(--border);">
+                            <div class="tiny text-muted fw-700 text-uppercase mb-2" style="letter-spacing:.06em;">
+                                Year to Date
                             </div>
-                            <div class="card-body">
-                                <h5 class="card-title mb-1">@asset.Name</h5>
-                                @if (!string.IsNullOrEmpty(asset.Location))
-                                {
-                                    <p class="text-muted small mb-2">
-                                        <i class="bi bi-geo-alt me-1"></i>@asset.Location
-                                    </p>
-                                }
-                                @if (asset.BedCount.HasValue)
-                                {
-                                    <span class="badge bg-light text-dark border">
-                                        <i class="bi bi-moon me-1"></i>@asset.BedCount beds
-                                    </span>
-                                }
-                            </div>
-                            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                                @if (asset.IsAvailable)
-                                {
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                        <i class="bi bi-check-circle me-1"></i>Available
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                        <i class="bi bi-x-circle me-1"></i>Unavailable
-                                    </span>
-                                }
-                                <span class="small text-muted">View details <i class="bi bi-arrow-right"></i></span>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="ytd-chip">
+                                        <div class="ytd-num">@YtdTotalNights</div>
+                                        <div class="ytd-label">Total nights booked</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="ytd-chip">
+                                        <div class="ytd-num">@YtdTotalBookings</div>
+                                        <div class="ytd-label">Total bookings</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="ytd-chip">
+                                        <div class="ytd-num">@YtdAvgNights</div>
+                                        <div class="ytd-label">Avg. nights / trip</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="ytd-chip">
+                                        <div class="ytd-num">@MostUsedAsset</div>
+                                        <div class="ytd-label">Most booked asset</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </a>
+                    }
                 </div>
-            }
+            </div>
         </div>
-    }
-</div>
+    </div>
+}
+
+<style>
+.booking-color-bar {
+    width: 4px; min-width: 4px; height: 38px;
+    border-radius: 4px; flex-shrink: 0;
+}
+.util-bar-bg {
+    height: 8px; background: var(--border);
+    border-radius: 100px; overflow: hidden;
+}
+.util-bar-fill {
+    height: 100%; border-radius: 100px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+    min-width: 2px;
+}
+.ytd-chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .6rem .75rem;
+    text-align: center;
+}
+.ytd-num  { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+.ytd-label { font-size: .68rem; color: var(--muted); margin-top: .1rem; }
+.fw-600 { font-weight: 600 !important; }
+</style>
 
 @code {
-    List<Asset>? AllAssets;
-    int UpcomingCount;
+    bool IsLoading = true;
+    string FirstName = "";
+    string? UserId;
+    DateOnly Today = DateOnly.FromDateTime(DateTime.Today);
+
+    List<Booking> MyUpcoming = new();
+    List<Booking> RecentAll = new();
+    int MyNightsThisYear;
+    int? DaysUntilNext;
+    int FamilyNightsThisYear;
+
+    record UtilRow(Asset Asset, int BookedDays, int BookingCount, int Pct);
+    List<UtilRow> Utilization = new();
+    int YtdTotalNights, YtdTotalBookings, YtdAvgNights;
+    string MostUsedAsset = "—";
 
     protected override async Task OnInitializedAsync()
     {
-        AllAssets = await Assets.GetAllAsync();
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var upcoming = await Bookings.GetForRangeAsync(today, today.AddDays(90));
-        UpcomingCount = upcoming.Count;
+        var state = await AuthState.GetAuthenticationStateAsync();
+        UserId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        FirstName = state.User.FindFirst("FullName")?.Value?.Split(' ').FirstOrDefault() ?? "there";
+
+        var yearStart  = new DateOnly(Today.Year, 1, 1);
+        var yearEnd    = new DateOnly(Today.Year, 12, 31);
+        var window90   = Today.AddDays(-90);
+
+        var allBookings     = await BookingSvc.GetAllAsync();
+        var allAssets       = await AssetSvc.GetAllAsync();
+
+        // My upcoming
+        MyUpcoming = allBookings
+            .Where(b => b.UserId == UserId && b.EndDate >= Today)
+            .OrderBy(b => b.StartDate)
+            .ToList();
+
+        // Days until next
+        var next = MyUpcoming.FirstOrDefault();
+        if (next != null)
+            DaysUntilNext = next.StartDate.DayNumber - Today.DayNumber;
+
+        // My nights this year
+        MyNightsThisYear = allBookings
+            .Where(b => b.UserId == UserId
+                && b.StartDate <= yearEnd && b.EndDate >= yearStart)
+            .Sum(b => NightsInYear(b, yearStart, yearEnd));
+
+        // Family nights this year
+        FamilyNightsThisYear = allBookings
+            .Where(b => b.StartDate <= yearEnd && b.EndDate >= yearStart)
+            .Sum(b => NightsInYear(b, yearStart, yearEnd));
+
+        // Recent family activity (last 8 bookings by date, mix of past+upcoming)
+        RecentAll = allBookings
+            .OrderByDescending(b => b.StartDate)
+            .Take(6)
+            .ToList();
+
+        // Utilization per asset (last 90 days)
+        var rows = new List<UtilRow>();
+        foreach (var asset in allAssets.Where(a => a.IsAvailable))
+        {
+            var assetBookings = allBookings
+                .Where(b => b.AssetId == asset.Id
+                    && b.StartDate <= Today && b.EndDate >= window90)
+                .ToList();
+
+            int bookedDays = 0;
+            foreach (var b in assetBookings)
+            {
+                var s = b.StartDate < window90 ? window90 : b.StartDate;
+                var e = b.EndDate > Today ? Today : b.EndDate;
+                bookedDays += Math.Max(0, e.DayNumber - s.DayNumber);
+            }
+
+            int pct = (int)Math.Round(bookedDays / 90.0 * 100);
+            rows.Add(new UtilRow(asset, bookedDays, assetBookings.Count, pct));
+        }
+        Utilization = rows.OrderByDescending(r => r.Pct).ToList();
+
+        // YTD summary
+        var ytd = allBookings
+            .Where(b => b.StartDate <= yearEnd && b.EndDate >= yearStart)
+            .ToList();
+
+        YtdTotalBookings = ytd.Count;
+        YtdTotalNights   = ytd.Sum(b => NightsInYear(b, yearStart, yearEnd));
+        YtdAvgNights     = YtdTotalBookings > 0
+            ? (int)Math.Round((double)YtdTotalNights / YtdTotalBookings)
+            : 0;
+
+        MostUsedAsset = ytd
+            .GroupBy(b => b.AssetId)
+            .OrderByDescending(g => g.Sum(b => NightsInYear(b, yearStart, yearEnd)))
+            .Select(g => allAssets.FirstOrDefault(a => a.Id == g.Key)?.Name ?? "—")
+            .FirstOrDefault() ?? "—";
+
+        IsLoading = false;
+    }
+
+    static int NightsInYear(Booking b, DateOnly start, DateOnly end)
+    {
+        var s = b.StartDate < start ? start : b.StartDate;
+        var e = b.EndDate   > end   ? end   : b.EndDate;
+        return Math.Max(0, e.DayNumber - s.DayNumber);
     }
 }

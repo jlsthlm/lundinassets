@@ -115,7 +115,7 @@
     ApplicationUser? CurrentUser;
     ProfileForm Form = new();
     string? PhotoError, PhotoSuccess, SaveError, SaveSuccess;
-    bool IsSaving, IsUploadingPhoto;
+    bool IsSaving;
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,7 +132,6 @@
     async Task HandlePhotoUpload(InputFileChangeEventArgs e)
     {
         PhotoError = null; PhotoSuccess = null;
-        IsUploadingPhoto = true;
         try
         {
             var path = await FileUpload.SaveAsync(e.File, "profiles");
@@ -150,7 +149,7 @@
         {
             PhotoError = $"Upload failed: {ex.Message}";
         }
-        finally { IsUploadingPhoto = false; }
+        finally { }
     }
 
     async Task HandleSave()

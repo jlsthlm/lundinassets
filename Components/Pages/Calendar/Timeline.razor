@@ -135,15 +135,6 @@
             </span>
         </div>
     }
-
-    @if (TooltipBooking != null)
-    {
-        <div class="timeline-tooltip" style="top:@TooltipY;left:@TooltipX">
-            <strong>@TooltipBooking.Asset.Name</strong><br />
-            @TooltipBooking.User.FullName<br />
-            <small>@TooltipBooking.StartDate.ToString("MMM d") – @TooltipBooking.EndDate.ToString("MMM d")</small>
-        </div>
-    }
 </div>
 
 @code {
@@ -153,8 +144,6 @@
     DateOnly Today = DateOnly.FromDateTime(DateTime.Today);
     int RangeDays = 30;
     bool IsLoading = true;
-    Booking? TooltipBooking;
-    string TooltipX = "0", TooltipY = "0";
 
     const int AssetLabelWidth = 200;
     const int CellWidth = 32;

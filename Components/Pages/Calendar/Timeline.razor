@@ -120,7 +120,6 @@
                             <div class="vtl-date-cell vtl-period-label@(state)">
                                 @if (Mode == ViewMode.Week)
                                 {
-                                    <!-- Show month tag when month changes -->
                                     @if (isFirst || period.Month != period.AddDays(-1).Month)
                                     {
                                         <span class="vtl-month-tag">@period.ToString("MMM")</span>
@@ -128,7 +127,7 @@
                                     <span class="vtl-day-num @(isCurrent ? "text-primary fw-bold" : "")">@period.Day</span>
                                     <span class="vtl-dow text-muted">@period.ToString("ddd")[..2]</span>
                                 }
-                                else <!-- Month mode -->
+                                else
                                 {
                                     @if (isFirst || isYearStart)
                                     {

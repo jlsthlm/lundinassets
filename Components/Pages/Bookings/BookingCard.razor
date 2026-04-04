@@ -55,7 +55,7 @@
             }
 
             @if (Booking.Status != BookingStatus.Cancelled
-                && Booking.StartDate > DateOnly.FromDateTime(DateTime.Today))
+                && Booking.EndDate > DateOnly.FromDateTime(DateTime.Today))
             {
                 <div class="d-flex gap-2">
                     @if (ShowEdit)

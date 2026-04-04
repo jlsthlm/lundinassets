@@ -13,7 +13,7 @@ window.vtl = {
     },
 
     scrollToToday() {
-        const el = document.querySelector('.vtl-today-row');
+        const el = document.querySelector('.vtl-date-cell.vtl-today');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     },
 

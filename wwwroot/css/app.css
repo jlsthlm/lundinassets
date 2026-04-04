@@ -770,11 +770,6 @@ a:hover { color: var(--primary-dark); }
   display: grid;
 }
 
-/* Individual row cells */
-.vtl-row {
-  display: contents; /* each row is just a set of grid cells */
-}
-
 .vtl-date-cell {
   position: sticky;
   left: 0;
@@ -798,15 +793,13 @@ a:hover { color: var(--primary-dark); }
   padding: 2px 4px;
 }
 
-/* Row state modifiers */
-.vtl-today-row .vtl-date-cell  { background: #eff6ff; }
-.vtl-today-row .vtl-asset-cell { background: #f0f9ff; }
-.vtl-weekend-row .vtl-date-cell  { background: #f8fafc; }
-.vtl-weekend-row .vtl-asset-cell { background: #f8fafc; }
-.vtl-month-start-row .vtl-date-cell,
-.vtl-month-start-row .vtl-asset-cell {
-  border-top: 2px solid #cbd5e1 !important;
-}
+/* Row state modifiers — applied directly to each cell */
+.vtl-date-cell.vtl-today  { background: #eff6ff; }
+.vtl-asset-cell.vtl-today { background: #f0f9ff; }
+.vtl-date-cell.vtl-weekend,
+.vtl-asset-cell.vtl-weekend { background: #f8fafc; }
+.vtl-date-cell.vtl-month-start,
+.vtl-asset-cell.vtl-month-start { border-top: 2px solid #cbd5e1 !important; }
 
 /* Date label content */
 .vtl-month-tag {

@@ -60,13 +60,16 @@
                 <div class="vtl-rows" style="grid-template-columns: @GridColumns;">
                     @foreach (var day in Days)
                     {
-                        bool isToday   = day == Today;
-                        bool isWeekend = day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+                        bool isToday      = day == Today;
+                        bool isWeekend    = day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
                         bool isMonthStart = day.Day == 1;
-                        string rowClass = $"vtl-row{(isToday ? " vtl-today-row" : "")}{(isWeekend ? " vtl-weekend-row" : "")}{(isMonthStart ? " vtl-month-start-row" : "")}";
+                        // State classes applied directly to each cell (no wrapper div needed)
+                        string state = (isToday ? " vtl-today" : "")
+                                     + (isWeekend ? " vtl-weekend" : "")
+                                     + (isMonthStart ? " vtl-month-start" : "");
 
                         <!-- Date label (sticky left) -->
-                        <div class="@rowClass vtl-date-cell">
+                        <div class="vtl-date-cell@(state)">
                             @if (isMonthStart || day == Days.First())
                             {
                                 <span class="vtl-month-tag">@day.ToString("MMM")</span>
@@ -79,7 +82,7 @@
                         @foreach (var asset in AllAssets)
                         {
                             var cell = GetCell(asset.Id, day);
-                            <div class="@rowClass vtl-asset-cell">
+                            <div class="vtl-asset-cell@(state)">
                                 @if (cell != null)
                                 {
                                     <div class="vtl-block vtl-block-@cell.Pos.ToString().ToLower()"

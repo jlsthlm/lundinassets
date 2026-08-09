@@ -52,12 +52,25 @@ public static class DbInitializer
                 await roleManager.CreateAsync(new IdentityRole(role));
         }
 
-        // Seed admin user
+        // Seed the bootstrap admin, but only on a genuinely fresh install. Keying this
+        // solely on the seed account's absence meant deleting it just brought it back on
+        // the next start — with whatever ADMIN_PASSWORD happened to be configured. Once
+        // a real administrator exists, this account has done its job and must stay gone.
         var adminEmail = config["AdminUser:Email"] ?? "admin@lundinassets.se";
-        var adminPassword = config["AdminUser:Password"] ?? "Admin1234!";
+        var adminPassword = config["AdminUser:Password"];
+        var hasAnyAdmin = (await userManager.GetUsersInRoleAsync("Admin")).Any();
 
-        if (await userManager.FindByEmailAsync(adminEmail) == null)
+        if (!hasAnyAdmin && await userManager.FindByEmailAsync(adminEmail) == null)
         {
+            // Only enforced on the path that actually creates the account, so existing
+            // installs are unaffected. There is no default here on purpose: a shipped
+            // one would silently become the admin password of every fresh deploy.
+            if (string.IsNullOrWhiteSpace(adminPassword))
+                throw new InvalidOperationException(
+                    "AdminUser:Password is not configured, so the initial admin account " +
+                    "cannot be seeded. Set AdminUser__Password (docker-compose.yml reads " +
+                    "ADMIN_PASSWORD from .env; see .env.example).");
+
             var admin = new ApplicationUser
             {
                 UserName = adminEmail,

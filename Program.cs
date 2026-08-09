@@ -15,8 +15,15 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 
 // Database
-var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+// Empty as well as missing: appsettings.json ships a blank connection string so no
+// credentials live in the repo, so an unconfigured deploy would otherwise fail later
+// with an opaque MySQL error instead of pointing at the real problem.
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connStr))
+    throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' is not configured. Set it via the " +
+        "ConnectionStrings__DefaultConnection environment variable (docker-compose.yml " +
+        "reads DB_* from .env; see .env.example).");
 // Pin the server version rather than using ServerVersion.AutoDetect(), which opens a
 // connection here — before the app is built — and crashes the process if MySQL isn't
 // up yet. depends_on/service_healthy does not protect this: it only applies to

@@ -5,15 +5,15 @@ services:
     container_name: lundinassets-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword_CHANGE_ME
-      MYSQL_DATABASE: lundinassets
-      MYSQL_USER: lundin_user
-      MYSQL_PASSWORD: db_password_CHANGE_ME
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${DB_NAME:-lundinassets}
+      MYSQL_USER: ${DB_USER:-lundin_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
-             "-u", "lundin_user", "--password=db_password_CHANGE_ME"]
+             "-u", "${DB_USER:-lundin_user}", "--password=${DB_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -25,9 +25,9 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=lundinassets;User=lundin_user;Password=db_password_CHANGE_ME;AllowPublicKeyRetrieval=true;SslMode=none;"
-      AdminUser__Email: admin@lundinassets.se
-      AdminUser__Password: Admin1234!
+      ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=${DB_NAME:-lundinassets};User=${DB_USER:-lundin_user};Password=${DB_PASSWORD:?set DB_PASSWORD in .env};AllowPublicKeyRetrieval=true;SslMode=none;"
+      AdminUser__Email: ${ADMIN_EMAIL:-admin@lundinassets.se}
+      AdminUser__Password: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
     volumes:
       - uploads:/app/wwwroot/uploads
     networks:

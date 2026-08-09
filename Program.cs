@@ -17,7 +17,14 @@ builder.Services.AddCascadingAuthenticationState();
 // Database
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-var serverVersion = ServerVersion.AutoDetect(connStr);
+// Pin the server version rather than using ServerVersion.AutoDetect(), which opens a
+// connection here — before the app is built — and crashes the process if MySQL isn't
+// up yet. depends_on/service_healthy does not protect this: it only applies to
+// "docker compose up", and is bypassed when the Docker daemon restarts containers on
+// boot. The db service is pinned to mysql:8.0 in docker-compose.yml, and
+// DbInitializer already retries the first real connection, so startup now tolerates
+// the database coming up late.
+var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connStr, serverVersion));

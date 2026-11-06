@@ -4,6 +4,15 @@ services:
     image: mysql:8.0
     container_name: lundinassets-db
     restart: unless-stopped
+    # Every container on this host is capped. Unlimited containers are what let a
+    # single docker build starve the box on 2026-08-14: the page cache collapsed
+    # and the kernel spent 25 minutes re-reading the same blocks off disk, which
+    # is what got the volume throttled. A cap turns that into one container being
+    # killed instead of the whole machine stalling. Limits are ceilings, not
+    # reservations — nothing is set aside while the container sits idle.
+    # Sized against observed use: this instance holds well under 10 MB of data
+    # and sits at ~385 MB resident, almost all of it fixed MySQL 8 overhead.
+    mem_limit: 1g
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${DB_NAME:-lundinassets}
@@ -19,10 +28,15 @@ services:
       retries: 10
       start_period: 30s
 
-  app:
+  # Named "lundinassets", not "app": compose registers the service name as a DNS
+  # alias on every network the service joins, so a generic name here would claim
+  # "app" on the shared edge network and hijack it for every other stack whose
+  # own containers resolve that name. Keep service names on edge-net unique.
+  lundinassets:
     build: .
     container_name: lundinassets-app
     restart: unless-stopped
+    mem_limit: 768m
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=${DB_NAME:-lundinassets};User=${DB_USER:-lundin_user};Password=${DB_PASSWORD:?set DB_PASSWORD in .env};AllowPublicKeyRetrieval=true;SslMode=none;"
@@ -31,8 +45,10 @@ services:
     volumes:
       - uploads:/app/wwwroot/uploads
     networks:
+      # default = this stack's private network, for reaching db.
+      # edge-net = the shared proxy network, so edge-nginx can reach this app.
       - default
-      - ontrack-net
+      - edge-net
     depends_on:
       db:
         condition: service_healthy
@@ -42,6 +58,8 @@ volumes:
   uploads:
 
 networks:
-  ontrack-net:
+  # Created out-of-band (docker network create edge-net) and owned by no compose
+  # project, so no stack's "down" can remove the network the others depend on.
+  edge-net:
     external: true
-    name: ontrack_ontrack-net
+    name: edge-net
